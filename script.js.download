@@ -1,0 +1,60 @@
+const VF = Vex.Flow;
+
+let renderer = new VF.Renderer(document.getElementById('sheet'), VF.Renderer.Backends.SVG);
+renderer.resize(800, 200);
+let context = renderer.getContext();
+let stave = new VF.Stave(10, 40, 780);
+
+const notesArray = [
+  "c/4", "d/4", "e/4", "f/4", "g/4", "a/4", "b/4",
+  "c/5", "d/5", "e/5", "f/5", "g/5", "a/5", "b/5",
+  "c/6", "d/6", "e/6", "f/6", "g/6", "a/6", "b/6",
+  "c/7"
+];
+
+let currentMelody = [];
+
+document.getElementById('generateMelody').addEventListener('click', function() {
+    context.clear();
+
+    const noteCount = parseInt(document.getElementById('noteCount').value);
+    const keySignature = document.getElementById('keySignature').value;
+    const clef = document.getElementById('clef').value;
+    const maxInterval = parseInt(document.getElementById('maxInterval').value);
+
+    stave = new VF.Stave(10, 40, 780);
+    stave.addClef(clef).addKeySignature(keySignature).setContext(context).draw();
+
+    currentMelody = [];
+    for (let i = 0; i < noteCount; i++) {
+        const randomKey = notesArray[Math.floor(Math.random() * maxInterval)];
+        currentMelody.push(new VF.StaveNote({clef: clef, keys: [randomKey], duration: "q"}));
+    }
+
+    const voice = new VF.Voice({num_beats: noteCount, beat_value: 4});
+    voice.addTickables(currentMelody);
+    const formatter = new VF.Formatter().joinVoices([voice]).format([voice], 760);
+    voice.draw(context, stave);
+});
+
+document.getElementById('playMelody').addEventListener('click', function() {
+    const noteDurations = currentMelody.map(note => note.keys[0]);
+    const midiNotes = noteDurations.map(note => {
+        const noteName = note.split('/')[0];
+        const octave = parseInt(note.split('/')[1]);
+        return MIDI.keyToNote[noteName.toUpperCase() + octave];
+    });
+
+    MIDI.loadPlugin({
+        soundfontUrl: "./soundfont/",
+        instruments: ["acoustic_grand_piano"],
+        onprogress: function(state, progress) {},
+        onsuccess: function() {
+            MIDI.programChange(0, 0);
+            for (let i = 0; i < midiNotes.length; i++) {
+                MIDI.noteOn(0, midiNotes[i], 127, i * 0.5);
+                MIDI.noteOff(0, midiNotes[i], i * 0.5 + 0.5);
+            }
+        }
+    });
+});
