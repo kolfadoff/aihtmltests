@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Progressões de Acordes</title>
+    <style>
+        button {
+            margin: 10px;
+            padding: 10px 20px;
+        }
+    </style>
+</head>
+<body>
+    <h2>Selecione uma progressão:</h2>
+    <button onclick="generateChords('I-IV-V-I')">Progressão I-IV-V-I</button>
+    <button onclick="generateChords('II-V-I')">Progressão II-V-I</button>
+    <button onclick="generateChords('I-VI-II-V')">Progressão I-VI-II-V</button>
+    <button onclick="generateChords('I-III-IV-V')">Progressão I-III-IV-V</button>
+
+    <h3>Progressão Gerada:</h3>
+    <p id="chordProgression"></p>
+
+    <script>
+        function generateChords(type) {
+            let progression = '';
+            switch(type) {
+                case 'I-IV-V-I':
+                    progression = 'C - F - G - C - C - F - G - C';
+                    break;
+                case 'II-V-I':
+                    progression = 'Dm - G - C - Dm - G - C - Dm - G';
+                    break;
+                case 'I-VI-II-V':
+                    progression = 'C - Am - Dm - G - C - Am - Dm - G';
+                    break;
+                case 'I-III-IV-V':
+                    progression = 'C - Em - F - G - C - Em - F - G';
+                    break;
+            }
+            document.getElementById('chordProgression').innerText = progression;
+        }
+    </script>
+</body>
+</html>
