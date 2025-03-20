@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Baixos do Acordeão - Sistema Stradella</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 10px;
+            background-color: #f0f0f0;
+            margin: 0;
+        }
+        .keyboard {
+            display: grid;
+            grid-template-columns: repeat(10, minmax(0, 60px));
+            gap: 5px;
+            max-width: 650px;
+            margin: 20px auto;
+        }
+        .key {
+            width: 100%;
+            height: 60px;
+            border: 2px solid #333;
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: white;
+            cursor: pointer;
+            user-select: none;
+            font-size: 12px;
+            touch-action: manipulation;
+        }
+        .key.active {
+            background-color: #ffd700;
+            border-color: #ff4500;
+        }
+        #metronome-controls {
+            margin: 20px auto;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+        }
+        #metronome-controls label {
+            margin: 0 5px;
+        }
+        @media (max-width: 600px) {
+            .keyboard {
+                grid-template-columns: repeat(5, minmax(0, 1fr));
+                gap: 3px;
+                max-width: 100%;
+            }
+            .key {
+                height: 50px;
+                font-size: 10px;
+            }
+            #metronome-controls {
+                flex-direction: column;
+                align-items: center;
+            }
+            #metronome-controls button {
+                width: 100%;
+                max-width: 200px;
+                padding: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>Baixos do Acordeão - Sistema Stradella</h1>
+    <div id="keyboard" class="keyboard"></div>
+    <p>Pressione ou toque nas teclas!</p>
+    <div id="metronome-controls">
+        <button id="toggleMetronome">Ligar Metrônomo</button>
+        <div>
+            <label><input type="radio" name="bpm" value="60" checked> 60 BPM</label>
+            <label><input type="radio" name="bpm" value="70"> 70 BPM</label>
+            <label><input type="radio" name="bpm" value="80"> 80 BPM</label>
+            <label><input type="radio" name="bpm" value="90"> 90 BPM</label>
+            <label><input type="radio" name="bpm" value="100"> 100 BPM</label>
+            <label><input type="radio" name="bpm" value="110"> 110 BPM</label>
+            <label><input type="radio" name="bpm" value="120"> 120 BPM</label>
+        </div>
+    </div>
+
+    <script>
+        // Mapeamento Stradella com duas oitavas para notas individuais
+        const keyToNote = {
+            '1': ['C3', 'C4'], '2': ['G3', 'G4'], '3': ['D3', 'D4'], '4': ['A3', 'A4'], '5': ['E3', 'E4'],
+            '6': ['B3', 'B4'], '7': ['F#3', 'F#4'], '8': ['C#4', 'C#5'], '9': ['G#3', 'G#4'], '0': ['D#4', 'D#5'],
+            'q': ['Ab2', 'Ab3'], 'w': ['Eb3', 'Eb4'], 'e': ['Bb2', 'Bb3'], 'r': ['F3', 'F4'], 't': ['C3', 'C4'],
+            'y': ['G3', 'G4'], 'u': ['D3', 'D4'], 'i': ['A3', 'A4'], 'o': ['E3', 'E4'], 'p': ['B3', 'B4'],
+            'a': ['Ab2', 'C3', 'Eb3'], 's': ['Eb2', 'G2', 'Bb2'], 'd': ['Bb2', 'D3', 'F3'],
+            'f': ['F2', 'A2', 'C3'], 'g': ['C3', 'E3', 'G3'], 'h': ['G3', 'B3', 'D4'],
+            'j': ['D3', 'F#3', 'A3'], 'k': ['A3', 'C#4', 'E4'], 'l': ['E3', 'G#3', 'B3'],
+            'ç': ['B3', 'D#4', 'F#4'],
+            'z': ['Ab2', 'B2', 'Eb3'], 'x': ['Eb2', 'Gb2', 'Bb2'], 'c': ['Bb2', 'Db3', 'F3'],
+            'v': ['F2', 'Ab2', 'C3'], 'b': ['C3', 'Eb3', 'G3'], 'n': ['G3', 'Bb3', 'D4'],
+            'm': ['D3', 'F3', 'A3'], ',': ['A3', 'C4', 'E4'], '.': ['E3', 'G3', 'B3'],
+            ';': ['B3', 'D4', 'F#4']
+        };
+
+        const noteFrequencies = {
+            'C2': 130.81, 'C#2': 138.59, 'Db2': 138.59, 'D2': 146.83, 'D#2': 155.56, 'Eb2': 155.56,
+            'E2': 164.81, 'F2': 174.61, 'F#2': 185.00, 'Gb2': 185.00, 'G2': 196.00, 'G#2': 207.65,
+            'Ab2': 207.65, 'A2': 220.00, 'A#2': 233.08, 'Bb2': 233.08, 'B2': 246.94,
+            'C3': 261.63, 'C#3': 277.18, 'Db3': 277.18, 'D3': 293.66, 'D#3': 311.13, 'Eb3': 311.13,
+            'E3': 329.63, 'F3': 349.23, 'F#3': 369.99, 'G3': 392.00, 'G#3': 415.30, 'Ab3': 415.30,
+            'A3': 440.00, 'A#3': 466.16, 'Bb3': 466.16, 'B3': 493.88,
+            'C4': 523.25, 'C#4': 554.37, 'Db4': 554.37, 'D4': 587.33, 'D#4': 622.25, 'Eb4': 622.25,
+            'E4': 659.25, 'F4': 698.46, 'F#4': 739.99, 'G4': 783.99, 'G#4': 830.61, 'Ab4': 830.61,
+            'A4': 880.00, 'A#4': 932.33, 'Bb4': 932.33, 'B4': 987.77,
+            'C5': 1046.50, 'C#5': 1108.73, 'D#5': 1244.51
+        };
+
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const activeOscillators = {};
+
+        function playNotes(notes) {
+            const oscillators = [];
+            notes = Array.isArray(notes) ? notes : [notes];
+            notes.forEach(note => {
+                const oscillator = audioContext.createOscillator();
+                oscillator.type = 'sawtooth';
+                oscillator.frequency.setValueAtTime(noteFrequencies[note], audioContext.currentTime);
+
+                const filter = audioContext.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(2000, audioContext.currentTime);
+
+                const gainNode = audioContext.createGain();
+                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+
+                const lfo = audioContext.createOscillator();
+                lfo.frequency.setValueAtTime(5, audioContext.currentTime);
+                const lfoGain = audioContext.createGain();
+                lfoGain.gain.setValueAtTime(4, audioContext.currentTime);
+                lfo.connect(lfoGain).connect(oscillator.frequency);
+                lfo.start();
+
+                oscillator.connect(filter);
+                filter.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+
+                oscillator.start();
+                oscillators.push({ oscillator, gainNode, lfo, filter });
+            });
+            return oscillators;
+        }
+
+        function stopNotes(key) {
+            if (activeOscillators[key]) {
+                activeOscillators[key].forEach(({ oscillator, gainNode, lfo, filter }) => {
+                    gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.1);
+                    oscillator.stop(audioContext.currentTime + 0.1);
+                    lfo.stop(audioContext.currentTime + 0.1);
+                    oscillator.disconnect();
+                    lfo.disconnect();
+                    filter.disconnect();
+                    gainNode.disconnect();
+                });
+                delete activeOscillators[key];
+            }
+        }
+
+        const keyboard = document.getElementById('keyboard');
+        const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0',
+                     'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p',
+                     'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', 'ç',
+                     'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', ';'];
+        
+        keys.forEach(key => {
+            const div = document.createElement('div');
+            div.className = 'key';
+            div.dataset.key = key;
+            div.textContent = `${key}: ${Array.isArray(keyToNote[key]) ? keyToNote[key].join('') : keyToNote[key]}`;
+            keyboard.appendChild(div);
+        });
+
+        document.addEventListener('keydown', (event) => {
+            const key = event.key.toLowerCase();
+            if (keyToNote[key] && !activeOscillators[key]) {
+                event.preventDefault();
+                activeOscillators[key] = playNotes(keyToNote[key]);
+                const keyElement = document.querySelector(`.key[data-key="${key}"]`);
+                if (keyElement) keyElement.classList.add('active');
+            }
+        });
+
+        document.addEventListener('keyup', (event) => {
+            const key = event.key.toLowerCase();
+            if (keyToNote[key]) {
+                stopNotes(key);
+                const keyElement = document.querySelector(`.key[data-key="${key}"]`);
+                if (keyElement) keyElement.classList.remove('active');
+            }
+        });
+
+        // Suporte a toque em smartphones
+        keys.forEach(key => {
+            const keyElement = document.querySelector(`.key[data-key="${key}"]`);
+            keyElement.addEventListener('touchstart', (event) => {
+                event.preventDefault();
+                if (!activeOscillators[key]) {
+                    activeOscillators[key] = playNotes(keyToNote[key]);
+                    keyElement.classList.add('active');
+                }
+            });
+            keyElement.addEventListener('touchend', (event) => {
+                event.preventDefault();
+                stopNotes(key);
+                keyElement.classList.remove('active');
+            });
+        });
+
+        // Metrônomo com checkboxes
+        let metronomeRunning = false;
+        let metronomeInterval;
+        const toggleMetronomeButton = document.getElementById('toggleMetronome');
+        const bpmRadios = document.querySelectorAll('input[name="bpm"]');
+
+        function getSelectedBPM() {
+            const selected = document.querySelector('input[name="bpm"]:checked');
+            return selected ? parseInt(selected.value) : 60; // Default 60
+        }
+
+        function playMetronomeClick() {
+            const osc = audioContext.createOscillator();
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(1000, audioContext.currentTime);
+            const gain = audioContext.createGain();
+            gain.gain.setValueAtTime(0.5, audioContext.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.05);
+            osc.connect(gain).connect(audioContext.destination);
+            osc.start(audioContext.currentTime);
+            osc.stop(audioContext.currentTime + 0.05);
+            setTimeout(() => {
+                osc.disconnect();
+                gain.disconnect();
+            }, 60);
+        }
+
+        function startMetronome() {
+            const bpm = getSelectedBPM();
+            const interval = 60000 / bpm;
+            metronomeInterval = setInterval(playMetronomeClick, interval);
+            metronomeRunning = true;
+            toggleMetronomeButton.textContent = 'Desligar Metrônomo';
+        }
+
+        function stopMetronome() {
+            clearInterval(metronomeInterval);
+            metronomeRunning = false;
+            toggleMetronomeButton.textContent = 'Ligar Metrônomo';
+        }
+
+        toggleMetronomeButton.addEventListener('click', () => {
+            if (metronomeRunning) {
+                stopMetronome();
+            } else {
+                startMetronome();
+            }
+        });
+
+        bpmRadios.forEach(radio => {
+            radio.addEventListener('change', () => {
+                if (metronomeRunning) {
+                    stopMetronome();
+                    startMetronome();
+                }
+            });
+        });
+    </script>
+</body>
+</html>
