@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Partituras Aleatórias</title>
+    <script src="https://unpkg.com/vexflow/releases/vexflow-min.js"></script>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-family: Arial, sans-serif;
+            margin-top: 20px;
+        }
+        #sheet {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h2>Leitura à Primeira Vista - Clave de Sol</h2>
+    <div id="sheet"></div>
+    <script>
+        function randomNotes(count) {
+            const notes = [];
+            const pitch = ['c', 'd', 'e', 'f', 'g', 'a', 'b'];
+            for (let i = 0; i < count; i++) {
+                const letter = pitch[Math.floor(Math.random() * pitch.length)];
+                const octave = 4 + Math.floor(Math.random() * 2); // 4 ou 5
+                notes.push(new Vex.Flow.StaveNote({ keys: [`${letter}/${octave}`], duration: 'q' }));
+            }
+            return notes;
+        }
+
+        window.onload = function() {
+            const VF = Vex.Flow;
+            const div = document.getElementById('sheet');
+            const renderer = new VF.Renderer(div, VF.Renderer.Backends.SVG);
+            const measureWidth = 110;
+            const height = 150;
+            renderer.resize(measureWidth * 8 + 20, height);
+            const context = renderer.getContext();
+
+            let x = 10;
+            for (let m = 0; m < 8; m++) {
+                const stave = new VF.Stave(x, 40, measureWidth);
+                if (m === 0) {
+                    stave.addClef('treble').addTimeSignature('4/4');
+                } else {
+                    stave.setBegBarType(VF.Barline.type.NONE);
+                }
+                if (m < 7) {
+                    stave.setEndBarType(VF.Barline.type.SINGLE);
+                } else {
+                    stave.setEndBarType(VF.Barline.type.END);
+                }
+                stave.setContext(context).draw();
+
+                const voice = new VF.Voice({ num_beats: 4, beat_value: 4 });
+                voice.addTickables(randomNotes(4));
+                new VF.Formatter().joinVoices([voice]).format([voice], measureWidth - 10);
+                voice.draw(context, stave);
+
+                x += measureWidth;
+            }
+        };
+    </script>
+</body>
+</html>
