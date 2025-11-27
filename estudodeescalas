@@ -1,7 +1,7 @@
 <html>
 <head>
-	<title>Teste seu código HTML</title>
-    <meta name="Author" content="Fábio Borges de Oliveira">
+	<title>Teste seu cÃ³digo HTML</title>
+    <meta name="Author" content="FÃ¡bio Borges de Oliveira">
 <head>
 <body bgcolor=#CCCCCC>
 	<center>
@@ -11,11 +11,11 @@
 
 <html>
 <body>
-	Página HTML 
+	PÃ¡gina HTML 
 	<script type="text/javascript">
 		<!--
 		
-			/* escreva seu código aqui.*/
+			/* escreva seu cÃ³digo aqui.*/
 			
 		//-->
 	</script>
@@ -25,7 +25,7 @@
 
 		</textarea>
 		<br><br>
-    	<input type="button" value=" Testar sua página" onclick="document.write(fonte.value);">
+    	<input type="button" value=" Testar sua pÃ¡gina" onclick="document.write(fonte.value);">
     </form>
 	</center>
 </body>
