@@ -1,32 +1,257 @@
-<html>
+<!DOCTYPE html>
+<html lang="pt-BR">
 <head>
-	<title>Teste seu código HTML</title>
-    <meta name="Author" content="Fábio Borges de Oliveira">
-<head>
-<body bgcolor=#CCCCCC>
-	<center>
-	<form>
-	    <br>
-		<textarea name="fonte" cols=70 rows=20>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ciclo de Quintas - Temporizador de Escalas</title>
+    <style>
+        body {
+            /* Fundo inicial preto */
+            background-color: #000; 
+            color: #FFF;
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            transition: background-color 0.1s ease-out; /* Transição suave para o flash */
+        }
 
-<html>
+        #tonality-display {
+            font-size: 10vw; /* Fonte grande e responsiva */
+            font-weight: bold;
+            text-align: center;
+            /* Corrigido para brilho branco/ciano, mais evidente no fundo preto */
+            text-shadow: 0 0 25px rgba(255, 255, 255, 0.9), 0 0 10px rgba(0, 255, 255, 0.5); 
+            margin-bottom: 20px;
+        }
+
+        #countdown-display {
+            font-size: 5vw;
+            font-weight: 300;
+            color: #00FFFF; /* Ciano para destaque do tempo */
+            margin-bottom: 40px;
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 25px;
+            border-radius: 10px;
+            background-color: rgba(34, 34, 34, 0.8);
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
+        }
+
+        .control-group {
+            margin-bottom: 20px;
+            text-align: center;
+            width: 100%;
+            max-width: 350px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            cursor: pointer;
+        }
+
+        #current-interval {
+            font-weight: bold;
+            color: #00FFFF;
+        }
+
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            font-size: 1em;
+            cursor: pointer;
+            border: 2px solid #FFF;
+            background-color: #000;
+            color: #FFF;
+            border-radius: 5px;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        
+        button:hover {
+            background-color: #00FFFF;
+            color: #000;
+        }
+    </style>
+</head>
 <body>
-	Página HTML 
-	<script type="text/javascript">
-		<!--
-		
-			/* escreva seu código aqui.*/
-			
-		//-->
-	</script>
 
-</body>
-</html>
+    <div id="tonality-display">Dó Maior</div>
+    <div id="countdown-display">60</div>
+    
+    <div class="controls">
+        <div class="control-group">
+            <label for="interval-slider">
+                Tempo por Tonalidade: 
+                <span id="current-interval">60</span> segundos
+            </label>
+            <input type="range" id="interval-slider" min="10" max="180" value="60" step="5">
+        </div>
 
-		</textarea>
-		<br><br>
-    	<input type="button" value=" Testar sua página" onclick="document.write(fonte.value);">
-    </form>
-	</center>
+        <div class="control-group">
+            <button id="start-button" onclick="handleStartOrResume()">▶️ Iniciar</button>
+            <button onclick="pauseTimer()">⏸️ Pausar</button>
+            <button onclick="resetTimer()">⏹️ Reiniciar</button>
+        </div>
+    </div>
+
+    <script>
+        const tonalidades = [
+            "Dó Maior", "Sol Maior", "Ré Maior", "Lá Maior", "Mi Maior", 
+            "Si Maior", "Fá# Maior", "Dó# Maior", "Lá♭ Maior", "Mi♭ Maior", 
+            "Si♭ Maior", "Fá Maior"
+        ];
+
+        let currentTonalidadeIndex = 0;
+        let countdownInterval = null; 
+        let intervalTimeInSeconds = 60; 
+        let timeLeft = 60; 
+        let isStarted = false; 
+
+        // Referências aos elementos do DOM
+        const display = document.getElementById('tonality-display');
+        const countdownDisplay = document.getElementById('countdown-display');
+        const slider = document.getElementById('interval-slider');
+        const currentIntervalDisplay = document.getElementById('current-interval');
+        const startButton = document.getElementById('start-button');
+        const body = document.body; // Referência ao body para mudar o fundo
+
+        // --- Efeito Visual (Flash) ---
+
+        /** * Faz o fundo da tela piscar 2 vezes em vermelho rapidamente.
+         */
+        function flashScreen() {
+            const flashColor = '#8B0000'; // Vermelho Escuro
+            const baseColor = '#000'; // Preto
+
+            // Função que alterna a cor uma vez
+            function toggleColor(isFlash) {
+                body.style.backgroundColor = isFlash ? flashColor : baseColor;
+            }
+
+            // Pisca 1
+            toggleColor(true);
+            setTimeout(() => {
+                toggleColor(false);
+                // Pisca 2 (Inicia o segundo flash após o primeiro ter terminado)
+                setTimeout(() => {
+                    toggleColor(true);
+                    setTimeout(() => {
+                        toggleColor(false); // Retorna ao preto
+                    }, 100); // 100ms ligado
+                }, 100); // 100ms desligado
+            }, 100); // 100ms ligado
+        }
+
+        // --- Funções de Display ---
+
+        function updateDisplay() {
+            display.textContent = tonalidades[currentTonalidadeIndex];
+        }
+
+        function updateCountdownDisplay() {
+            countdownDisplay.textContent = timeLeft;
+        }
+
+        // --- Funções de Controle do Timer ---
+
+        function stopInterval() {
+            if (countdownInterval) {
+                clearInterval(countdownInterval);
+                countdownInterval = null;
+            }
+        }
+        
+        function nextTonalidade() {
+            flashScreen(); // Chama a função de piscar
+            currentTonalidadeIndex = (currentTonalidadeIndex + 1) % tonalidades.length;
+            updateDisplay();
+            
+            // Reinicia o tempo para o novo ciclo 
+            timeLeft = intervalTimeInSeconds;
+            updateCountdownDisplay();
+        }
+
+        function tick() {
+            if (timeLeft > 1) {
+                timeLeft--;
+                updateCountdownDisplay();
+            } else {
+                // O tempo chegou a zero
+                nextTonalidade();
+            }
+        }
+        
+        function handleStartOrResume() {
+            if (countdownInterval) return; // Já está rodando
+
+            if (!isStarted) {
+                // Inicia o ciclo do zero
+                resetTimer(); 
+                isStarted = true;
+            }
+            
+            startButton.textContent = '▶️ Continuar';
+            
+            // Inicia o timer regressivo
+            countdownInterval = setInterval(tick, 1000);
+            console.log(`Temporizador continuado. Tempo restante: ${timeLeft}s.`);
+        }
+
+        function pauseTimer() {
+            if (!countdownInterval) return; // Já está pausado
+            
+            stopInterval();
+            startButton.textContent = '▶️ Continuar';
+            console.log("Temporizador pausado.");
+        }
+
+        function resetTimer() {
+            stopInterval(); 
+            
+            intervalTimeInSeconds = parseInt(slider.value);
+            timeLeft = intervalTimeInSeconds;
+            currentTonalidadeIndex = 0;
+            isStarted = false;
+
+            updateDisplay();
+            updateCountdownDisplay();
+            startButton.textContent = '▶️ Iniciar';
+            console.log("Temporizador reiniciado (resetado).");
+        }
+
+        // --- Inicialização e Event Listeners ---
+        
+        slider.addEventListener('input', (event) => {
+            const newInterval = parseInt(event.target.value);
+            currentIntervalDisplay.textContent = newInterval;
+            
+            intervalTimeInSeconds = newInterval;
+
+            if (!countdownInterval) {
+                timeLeft = newInterval;
+                updateCountdownDisplay();
+            }
+        });
+
+        // Inicializa o estado visual ao carregar a página
+        document.addEventListener('DOMContentLoaded', () => {
+            updateDisplay();
+            updateCountdownDisplay();
+        });
+    </script>
 </body>
 </html>
