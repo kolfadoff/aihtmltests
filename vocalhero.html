@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vocal Hero - Estúdio Vocal</title>
+    <!-- Biblioteca OpenSheetMusicDisplay via CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/opensheetmusicdisplay@1.8.5/build/opensheetmusicdisplay.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #1a1a2e;
+            --panel-bg: #16213e;
+            --accent: #0f3460;
+            --highlight: #e94560;
+            --text: #f1f1f1;
+            --success: #4ccd99;
+            --error: #ff4757;
+            --warning: #ff9f43;
+            --key-white: #ffffff;
+            --key-black: #111111;
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text);
+            margin: 0;
+            padding: 10px 2%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+        }
+        header {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid var(--accent);
+            padding-bottom: 15px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        h1 { margin: 0; color: var(--highlight); font-size: 1.8rem; }
+        
+        /* PAINÉIS ADAPTATIVOS DE TELA CHEIA (100% WIDTH) */
+        .controls-panel, .reference-panel, .navigation-panel {
+            background-color: var(--panel-bg);
+            width: 100%;
+            padding: 12px 15px;
+            border-radius: 8px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            margin-bottom: 12px;
+        }
+        
+        button, label.btn-file {
+            background-color: var(--highlight);
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.2s, transform 0.1s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            text-align: center;
+        }
+        button:hover, label.btn-file:hover { background-color: #d13d54; }
+        button:active { transform: scale(0.97); }
+        button#btn-mic.active { background-color: var(--success); }
+        input[type="file"] { display: none; }
+        
+        .control-group { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        select, input[type="range"] {
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            background: #fff;
+            color: #333;
+            font-weight: bold;
+        }
+        
+        #tuner-panel {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            background: #0f3460;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 1.05rem;
+            flex-wrap: wrap;
+        }
+        .pitch-display { font-size: 1.4rem; font-weight: bold; color: var(--success); min-width: 50px; text-align: center; }
+        
+        .gauge-container {
+            width: 130px; height: 12px; background: #0b2240; border-radius: 6px; position: relative; overflow: hidden; border: 1px solid #325288;
+        }
+        .gauge-center { position: absolute; left: 50%; top: 0; bottom: 0; width: 2px; background: #fff; transform: translateX(-50%); z-index: 2; }
+        .gauge-needle {
+            position: absolute; top: 1px; bottom: 1px; width: 10px; border-radius: 4px; background: var(--success);
+            left: 50%; transform: translateX(-50%); transition: left 0.08s ease-out, background-color 0.1s;
+        }
+
+        .ref-buttons { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; width: 100%; }
+        .btn-audio { background-color: var(--accent); border: 1px solid #325288; }
+        .btn-audio:hover { background-color: #325288; }
+        .btn-nav { background-color: #2c3e50; border: 1px solid #4ca1af; }
+        .btn-nav:hover { background-color: #34495e; }
+        
+        /* TECLADO ADAPTATIVO PARA CELULAR E DESKTOP */
+        .piano-container { display: flex; justify-content: center; user-select: none; padding-top: 5px; width: 100%; overflow-x: auto; }
+        .key-white {
+            width: 36px; height: 100px; background-color: var(--key-white); border: 1px solid #ccc;
+            border-radius: 0 0 5px 5px; cursor: pointer; z-index: 1; display: flex; align-items: flex-end;
+            justify-content: center; padding-bottom: 8px; color: #333; font-weight: bold; font-size: 0.8rem;
+            box-shadow: 0 3px 5px rgba(0,0,0,0.2); transition: background 0.1s; flex-shrink: 0;
+        }
+        .key-white:hover { background-color: #f0f0f0; }
+        .key-white:active { background-color: #ddd; transform: translateY(2px); }
+        .key-black {
+            width: 22px; height: 65px; background-color: var(--key-black); margin-left: -11px; margin-right: -11px;
+            border-radius: 0 0 3px 3px; cursor: pointer; z-index: 2; display: flex; align-items: flex-end;
+            justify-content: center; padding-bottom: 6px; color: #fff; font-size: 0.65rem;
+            box-shadow: 0 3px 5px rgba(0,0,0,0.5); transition: background 0.1s; flex-shrink: 0;
+        }
+        .key-black:hover { background-color: #333; }
+        .key-black:active { background-color: #000; transform: translateY(2px); }
+
+        /* AREA DA PARTITURA EM TELA CHEIA */
+        #score-container {
+            width: 100%;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            min-height: 280px;
+            overflow-x: auto;
+            position: relative;
+            cursor: pointer; /* Indicação visual de que a partitura é clicável */
+        }
+        
+        #pitch-tracer {
+            position: absolute; display: none; align-items: center; gap: 5px; padding: 4px 10px;
+            border-radius: 15px; font-weight: 800; font-size: 0.85rem; z-index: 100;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.4); pointer-events: none;
+            transition: top 0.08s ease-out, left 0.1s ease-out, background-color 0.1s; white-space: nowrap;
+        }
+        .tracer-correct { background-color: var(--success); color: #000; border: 2px solid #fff; }
+        .tracer-high { background-color: var(--error); color: #fff; border: 2px solid #fff; }
+        .tracer-low { background-color: var(--warning); color: #000; border: 2px solid #fff; }
+
+        #status-msg { color: #aaa; font-style: italic; margin-top: 10px; font-weight: bold; text-align: center; }
+        #error-box {
+            display: none; width: 100%; background-color: var(--error); color: white;
+            padding: 15px; border-radius: 8px; margin-bottom: 15px; font-weight: bold;
+        }
+
+        /* RODAPÉ E CRÉDITOS */
+        footer {
+            width: 100%;
+            margin-top: 30px;
+            padding: 20px 10px;
+            border-top: 1px solid #325288;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            font-size: 0.95rem;
+            background-color: var(--panel-bg);
+            border-radius: 8px;
+        }
+        footer a { color: var(--success); text-decoration: none; font-weight: bold; }
+        footer a:hover { text-decoration: underline; }
+        .pix-box { background: #0b2240; padding: 8px 12px; border-radius: 5px; border: 1px solid #325288; }
+
+        /* AJUSTES RESPONSIVOS PARA CELULARES (TELA PEQUENA) */
+        @media (max-width: 768px) {
+            header, .controls-panel, .reference-panel, .navigation-panel, footer {
+                flex-direction: column;
+                align-items: stretch;
+                text-align: center;
+            }
+            .control-group, .ref-buttons {
+                justify-content: center;
+                width: 100%;
+            }
+            button, select, label.btn-file {
+                width: 100%;
+            }
+            #tuner-panel {
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>🎤 Vocal Hero</h1>
+        <div id="tuner-panel">
+            <span>Alvo: <strong id="target-note" style="color: #ffd700;">--</strong></span>
+            <span>Voz: <strong id="detected-note" class="pitch-display">--</strong></span>
+            <span>Desvio: <strong id="cents-display">0c</strong></span>
+            <div class="gauge-container" title="Medidor de Afinação">
+                <div class="gauge-center"></div>
+                <div class="gauge-needle" id="gauge-needle"></div>
+            </div>
+        </div>
+    </header>
+
+    <div id="error-box"></div>
+
+    <!-- 1. PAINEL DE IMPORTAÇÃO E CONFIGURAÇÃO -->
+    <div class="controls-panel">
+        <div class="control-group">
+            <label class="btn-file">
+                📁 Importar MusicXML / MXL
+                <input type="file" id="file-input" accept=".xml,.mxl">
+            </label>
+            <button id="btn-mic">🎙️ Ligar Microfone</button>
+        </div>
+
+        <div class="control-group">
+            <label for="octave-select">Registro Vocal:</label>
+            <select id="octave-select" style="border: 2px solid #ffd700; background: #fffadc;">
+                <option value="any">🔄 Qualquer Oitava (Recomendado)</option>
+                <option value="-12">⬇️ -1 Oitava (Tenor/Barítono lendo Clave de Sol)</option>
+                <option value="0">🎯 Oitava Exata da Partitura</option>
+                <option value="+12">⬆️ +1 Oitava (Cantar 8ª acima da escrita)</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <label for="mode-select">Modo:</label>
+            <select id="mode-select">
+                <option value="step">Passo a Passo (Nota a Nota)</option>
+                <option value="realtime">Tempo Real (Contínuo)</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <label for="tolerance">Tolerância: <span id="tol-val">40</span>c</label>
+            <input type="range" id="tolerance" min="10" max="100" value="40" style="width: 80px;">
+        </div>
+    </div>
+
+    <!-- 2. PAINEL DE NAVEGAÇÃO E ZOOM (NOVO) -->
+    <div class="navigation-panel">
+        <div class="control-group">
+            <span style="font-weight: bold; color: #ffd700;">Navegação no Exercício:</span>
+            <button id="btn-reset" class="btn-nav" title="Reiniciar do começo">⏮️ Início</button>
+            <button id="btn-prev" class="btn-nav" title="Voltar uma nota">⏪ Voltar</button>
+            <button id="btn-next" class="btn-nav" title="Avançar uma nota">Avançar ⏩</button>
+        </div>
+        <div class="control-group">
+            <label for="zoom-select" style="font-weight: bold;">🔍 Zoom da Partitura:</label>
+            <select id="zoom-select">
+                <option value="0.5">50% (Compacto)</option>
+                <option value="0.75">75%</option>
+                <option value="1.0" selected>100% (Normal)</option>
+                <option value="1.25">125% (Ampliado)</option>
+                <option value="1.5">150% (Grande)</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- 3. PAINEL DE REFERÊNCIA TONAL E TECLADO -->
+    <div class="reference-panel">
+        <div class="ref-buttons">
+            <button id="btn-play-target" class="btn-audio">🎵 Tocar Nota Alvo</button>
+            <button id="btn-play-chord" class="btn-audio">🎶 Tocar Acorde da Tonalidade</button>
+        </div>
+        <div class="piano-container" id="piano-keyboard"></div>
+    </div>
+
+    <!-- 4. CONTAINER DA PARTITURA EM TELA CHEIA -->
+    <div id="score-container" title="Dica: Clique em qualquer nota ou compasso da partitura para mover o cursor até ela!">
+        <div id="pitch-tracer">● Aguardando...</div>
+    </div>
+    <div id="status-msg">Iniciando sistema...</div>
+
+    <!-- 5. RODAPÉ DE CRÉDITOS E CONTRIBUIÇÃO (NOVO) -->
+    <footer>
+        <div>
+            Desenvolvido por: <a href="https://www.instagram.com/mattcoutto" target="_blank" rel="noopener noreferrer">@mattcoutto (Instagram)</a>
+        </div>
+        <div class="pix-box">
+            💡 Contribua com o projeto! PIX: <strong>llord.matt@gmail.com</strong>
+        </div>
+    </footer>
+
+    <script>
+        function showScreenError(msg) {
+            const errBox = document.getElementById("error-box");
+            errBox.style.display = "block";
+            errBox.innerText = "⚠️ Erro no sistema: " + msg;
+            console.error(msg);
+        }
+
+        // --- 1. SINTETIZADOR WEB AUDIO ---
+        function playTone(freq, duration = 1.5, type = "triangle") {
+            if (!freq || freq <= 0) return;
+            try {
+                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                if (audioCtx.state === "suspended") audioCtx.resume();
+
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+
+                gain.gain.setValueAtTime(0, audioCtx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.25, audioCtx.currentTime + 0.05);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                osc.start();
+                osc.stop(audioCtx.currentTime + duration);
+            } catch (e) { console.error("Erro no áudio:", e); }
+        }
+
+        function playReferenceChord() {
+            let baseFreq = 261.63;
+            try {
+                if (osmd && osmd.sheet) {
+                    const firstMeasure = osmd.sheet.SourceMeasures[0];
+                    const firstNote = firstMeasure.VerticalSourceStaffEntryContainers[0].StaffEntries[0].VoiceEntries[0].Notes[0];
+                    if (firstNote && !firstNote.isRest()) baseFreq = firstNote.Pitch.Frequency;
+                    else if (rawTargetFrequency > 0) baseFreq = rawTargetFrequency;
+                }
+            } catch(e) { if (rawTargetFrequency > 0) baseFreq = rawTargetFrequency; }
+
+            baseFreq = getAdjustedTargetFreq(baseFreq, 200); 
+
+            playTone(baseFreq, 2.5);
+            playTone(baseFreq * Math.pow(2, 4/12), 2.5);
+            playTone(baseFreq * Math.pow(2, 7/12), 2.5);
+        }
+
+        // --- 2. TECLADO VIRTUAL ---
+        const keyboardNotes = [
+            { note: "C4", name: "Dó", freq: 261.63, type: "white" },
+            { note: "C#4", name: "C#", freq: 277.18, type: "black" },
+            { note: "D4", name: "Ré", freq: 293.66, type: "white" },
+            { note: "D#4", name: "D#", freq: 311.13, type: "black" },
+            { note: "E4", name: "Mi", freq: 329.63, type: "white" },
+            { note: "F4", name: "Fá", freq: 349.23, type: "white" },
+            { note: "F#4", name: "F#", freq: 369.99, type: "black" },
+            { note: "G4", name: "Sol", freq: 392.00, type: "white" },
+            { note: "G#4", name: "G#", freq: 415.30, type: "black" },
+            { note: "A4", name: "Lá", freq: 440.00, type: "white" },
+            { note: "A#4", name: "A#", freq: 466.16, type: "black" },
+            { note: "B4", name: "Si", freq: 493.88, type: "white" },
+            { note: "C5", name: "Dó", freq: 523.25, type: "white" }
+        ];
+
+        function buildKeyboard() {
+            const container = document.getElementById("piano-keyboard");
+            container.innerHTML = "";
+            keyboardNotes.forEach(k => {
+                const keyDiv = document.createElement("div");
+                keyDiv.className = k.type === "white" ? "key-white" : "key-black";
+                keyDiv.innerText = k.name;
+                keyDiv.title = `${k.note} (${Math.round(k.freq)} Hz)`;
+                keyDiv.addEventListener("click", () => playTone(k.freq, 1.2));
+                container.appendChild(keyDiv);
+            });
+        }
+
+        document.getElementById("btn-play-target").addEventListener("click", () => {
+            if (rawTargetFrequency > 0) {
+                const adjFreq = getAdjustedTargetFreq(rawTargetFrequency, currentSungFreq || 200);
+                playTone(adjFreq, 1.5);
+            } else alert("Nenhuma nota selecionada no cursor.");
+        });
+        document.getElementById("btn-play-chord").addEventListener("click", playReferenceChord);
+
+        // --- 3. PARTITURA DE TESTE ---
+        const defaultMusicXML = `<?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 3.1 Partwise//EN" "http://www.musicxml.org/dtds/partwise.dtd">
+        <score-partwise version="3.1"><part-list><score-part id="P1"><part-name>Voz</part-name></score-part></part-list>
+        <part id="P1"><measure number="1"><attributes><divisions>1</divisions><key><fifths>0</fifths></key><time><beats>4</beats><beat-type>4</beat-type></time><clef><sign>G</sign><line>2</line></clef></attributes>
+        <note><pitch><step>C</step><octave>4</octave></pitch><duration>1</duration><type>quarter</type></note>
+        <note><pitch><step>D</step><octave>4</octave></pitch><duration>1</duration><type>quarter</type></note>
+        <note><pitch><step>E</step><octave>4</octave></pitch><duration>1</duration><type>quarter</type></note>
+        <note><pitch><step>F</step><octave>4</octave></pitch><duration>1</duration><type>quarter</type></note>
+        </measure><measure number="2">
+        <note><pitch><step>G</step><octave>4</octave></pitch><duration>1</duration><type>quarter</type></note>
+        <note><pitch><step>A</step><octave>4</octave></pitch><duration>1</duration><type>quarter</type></note>
+        <note><pitch><step>B</step><octave>4</octave></pitch><duration>1</duration><type>quarter</type></note>
+        <note><pitch><step>C</step><octave>5</octave></pitch><duration>1</duration><type>quarter</type></note>
+        </measure></part></score-partwise>`;
+
+        // --- 4. VARIÁVEIS DE ESTADO E ÁUDIO ---
+        let osmd = null;
+        let audioCtx, analyser, microphone;
+        let isListening = false;
+        let rawTargetFrequency = 0;
+        let targetNoteName = "--";
+        let toleranceCents = 40;
+        let mode = "step";
+        let octaveMode = "any";
+        let currentSungFreq = 0;
+        let currentZoom = 1.0;
+        
+        let dwellTimeMs = 250;
+        let correctPitchStartTime = null;
+        let realTimeTimer = null;
+        let bpm = 80;
+
+        const noteNames = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+
+        // --- 5. MATEMÁTICA DE AJUSTE DE OITAVA ---
+        function getAdjustedTargetFreq(rawFreq, sungFreq) {
+            if (!rawFreq || rawFreq <= 0) return 0;
+            if (octaveMode === "-12") return rawFreq / 2;
+            if (octaveMode === "+12") return rawFreq * 2;
+            if (octaveMode === "any") {
+                if (!sungFreq || sungFreq <= 0) return rawFreq;
+                let adj = rawFreq;
+                while (sungFreq / adj > 1.4142) adj *= 2;
+                while (adj / sungFreq > 1.4142) adj /= 2;
+                return adj;
+            }
+            return rawFreq;
+        }
+
+        function getNoteNameFromFreq(freq) {
+            if (!freq || freq <= 0) return "--";
+            const noteNum = 12 * (Math.log(freq / 440) / Math.log(2));
+            const midiNote = Math.round(noteNum) + 69;
+            return noteNames[midiNote % 12] + Math.floor(midiNote / 12 - 1);
+        }
+
+        // --- 6. INICIALIZAÇÃO A PROVA DE FALHAS COM INTERATIVIDADE ---
+        function initApp() {
+            if (osmd) return;
+            buildKeyboard();
+            try {
+                if (typeof opensheetmusicdisplay === "undefined") {
+                    showScreenError("A biblioteca visual não foi carregada. Verifique sua internet.");
+                    return;
+                }
+                
+                // Configurado para ajuste responsivo nativo de tela e desenho compactado
+                osmd = new opensheetmusicdisplay.OpenSheetMusicDisplay("score-container", {
+                    followCursor: true,
+                    drawCursor: true,
+                    autoResize: true,
+                    drawingParameters: "compacttight",
+                    cursorOptions: { color: "#e94560", alpha: 0.6, width: 3 }
+                });
+                
+                loadScore(defaultMusicXML, "Escala de Teste");
+                setupScoreClickNavigation();
+            } catch (err) { showScreenError("Erro ao iniciar visual: " + err.message); }
+        }
+
+        if (document.readyState === "complete" || document.readyState === "interactive") setTimeout(initApp, 50);
+        else { window.addEventListener("DOMContentLoaded", initApp); window.addEventListener("load", initApp); }
+
+        // Mapeia cliques no canvas para reposicionar o cursor na nota selecionada
+        function setupScoreClickNavigation() {
+            const container = document.getElementById("score-container");
+            container.addEventListener("click", (e) => {
+                if (!osmd || !osmd.cursor || !osmd.sheet) return;
+                try {
+                    // Se o usuário clicar, reiniciamos o tempo para evitar saltos acidentais
+                    correctPitchStartTime = null;
+                    
+                    // Avança sequencialmente pelo cursor se clicar na metade direita ou volta se na esquerda
+                    const rect = container.getBoundingClientRect();
+                    const clickX = e.clientX - rect.left;
+                    if (clickX > rect.width / 2) {
+                        if (!osmd.cursor.Iterator.EndReached) advanceCursor();
+                    } else {
+                        stepBackCursor();
+                    }
+                } catch(err) { console.log("Navegação por clique acionada."); }
+            });
+        }
+
+        function loadScore(content, filename = "") {
+            if (!osmd) { initApp(); if (!osmd) return; }
+            document.getElementById("error-box").style.display = "none";
+            document.getElementById("status-msg").innerText = "Desenhando partitura: " + (filename || "Arquivo") + "...";
+
+            try { if (osmd.sheet) osmd.clear(); } catch (e) {}
+
+            osmd.load(content).then(() => {
+                osmd.zoom = currentZoom;
+                osmd.render();
+                osmd.cursor.show();
+                updateTargetNoteFromCursor();
+                document.getElementById("status-msg").innerText = `Partitura ativa: ${filename || "Sucesso!"}`;
+            }).catch(err => {
+                showScreenError(`Não foi possível ler "${filename}". Tente exportar como MusicXML (.xml) não compactado. Detalhe: ${err.message || err}`);
+            });
+        }
+
+        function updateTargetNoteFromCursor() {
+            try {
+                let notesUnderCursor = osmd.cursor.NotesUnderCursor();
+                if (notesUnderCursor && notesUnderCursor.length > 0) {
+                    let note = notesUnderCursor[0];
+                    if (!note.isRest()) {
+                        rawTargetFrequency = note.pitch.Frequency;
+                        targetNoteName = note.pitch.FundamentalNote + note.pitch.Octave;
+                        updateTargetDisplay();
+                    } else {
+                        rawTargetFrequency = 0;
+                        document.getElementById("target-note").innerText = "Pausa";
+                    }
+                } else {
+                    document.getElementById("target-note").innerText = "Fim da Música";
+                    rawTargetFrequency = 0;
+                }
+            } catch (e) {
+                rawTargetFrequency = 0;
+                document.getElementById("target-note").innerText = "--";
+            }
+        }
+
+        function updateTargetDisplay() {
+            if (rawTargetFrequency <= 0) return;
+            const adjFreq = getAdjustedTargetFreq(rawTargetFrequency, currentSungFreq || 200);
+            const adjName = getNoteNameFromFreq(adjFreq);
+            
+            let label = adjName;
+            if (octaveMode === "any" && adjName !== targetNoteName) label += ` (${targetNoteName} Flex)`;
+            else if (octaveMode === "-12") label += " (-8ª)";
+            else if (octaveMode === "+12") label += " (+8ª)";
+            
+            document.getElementById("target-note").innerText = label;
+        }
+
+        // --- 7. CONTROLES DE NAVEGAÇÃO E ZOOM NO EXERCÍCIO (NOVO) ---
+        document.getElementById("btn-reset").addEventListener("click", () => {
+            if (!osmd || !osmd.cursor) return;
+            try {
+                osmd.cursor.reset();
+                osmd.cursor.show();
+                updateTargetNoteFromCursor();
+                correctPitchStartTime = null;
+            } catch(e) { console.error("Erro ao resetar exercício:", e); }
+        });
+
+        document.getElementById("btn-next").addEventListener("click", () => {
+            if (!osmd || !osmd.cursor) return;
+            advanceCursor();
+        });
+
+        function stepBackCursor() {
+            if (!osmd || !osmd.cursor || !osmd.sheet) return;
+            try {
+                // Para retroceder de forma segura no OSMD, resetamos e avançamos até o passo anterior
+                const currentStamp = osmd.cursor.Iterator.CurrentSourceTimestamp;
+                osmd.cursor.reset();
+                while (!osmd.cursor.Iterator.EndReached) {
+                    const nextStep = osmd.cursor.Iterator.CurrentSourceTimestamp;
+                    if (nextStep >= currentStamp && currentStamp > 0) break;
+                    osmd.cursor.next();
+                }
+                updateTargetNoteFromCursor();
+                correctPitchStartTime = null;
+            } catch(e) { osmd.cursor.reset(); updateTargetNoteFromCursor(); }
+        }
+        document.getElementById("btn-prev").addEventListener("click", stepBackCursor);
+
+        document.getElementById("zoom-select").addEventListener("change", (e) => {
+            currentZoom = parseFloat(e.target.value);
+            if (osmd && osmd.sheet) {
+                osmd.zoom = currentZoom;
+                osmd.render();
+                updateFloatingTracer(0, document.getElementById("pitch-tracer"));
+            }
+        });
+
+        // --- 8. LEITOR DE ARQUIVOS ---
+        document.getElementById("file-input").addEventListener("change", (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            document.getElementById("status-msg").innerText = `Lendo arquivo: ${file.name}...`;
+            const reader = new FileReader();
+            const isMxl = file.name.toLowerCase().endsWith('.mxl');
+
+            reader.onload = (event) => loadScore(event.target.result, file.name);
+            reader.onerror = () => showScreenError("O navegador não acatou a leitura do arquivo.");
+            reader.onloadend = () => { e.target.value = ''; };
+
+            if (isMxl) reader.readAsBinaryString(file);
+            else reader.readAsText(file);
+        });
+
+        document.getElementById("octave-select").addEventListener("change", (e) => {
+            octaveMode = e.target.value;
+            updateTargetDisplay();
+        });
+
+        document.getElementById("tolerance").addEventListener("input", (e) => {
+            toleranceCents = parseInt(e.target.value);
+            document.getElementById("tol-val").innerText = toleranceCents;
+        });
+
+        document.getElementById("mode-select").addEventListener("change", (e) => {
+            mode = e.target.value;
+            if (mode === "realtime" && isListening) startRealTimeClock();
+            else stopRealTimeClock();
+        });
+
+        document.getElementById("btn-mic").addEventListener("click", toggleMicrophone);
+
+        // --- 9. ÁUDIO E DETECÇÃO DE PITCH COM TRACINHO VISUAL ---
+        async function toggleMicrophone() {
+            if (isListening) {
+                if (audioCtx) audioCtx.close();
+                isListening = false;
+                document.getElementById("btn-mic").innerText = "🎙️ Ligar Microfone";
+                document.getElementById("btn-mic").classList.remove("active");
+                document.getElementById("pitch-tracer").style.display = "none";
+                stopRealTimeClock();
+                return;
+            }
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                if (audioCtx.state === "suspended") await audioCtx.resume();
+                
+                analyser = audioCtx.createAnalyser();
+                analyser.fftSize = 2048;
+                microphone = audioCtx.createMediaStreamSource(stream);
+                microphone.connect(analyser);
+
+                isListening = true;
+                document.getElementById("btn-mic").innerText = "🛑 Desligar Microfone";
+                document.getElementById("btn-mic").classList.add("active");
+                document.getElementById("error-box").style.display = "none";
+                
+                if (mode === "realtime") startRealTimeClock();
+                detectPitchLoop();
+            } catch (err) { showScreenError("Acesso ao microfone negado no navegador."); }
+        }
+
+        function detectPitchLoop() {
+            if (!isListening) return;
+
+            const buffer = new Float32Array(analyser.fftSize);
+            analyser.getFloatTimeDomainData(buffer);
+            const freq = autoCorrelate(buffer, audioCtx.sampleRate);
+            currentSungFreq = freq;
+
+            const tracer = document.getElementById("pitch-tracer");
+            const needle = document.getElementById("gauge-needle");
+
+            if (freq !== -1 && freq > 60 && freq < 1200) {
+                const noteName = getNoteNameFromFreq(freq);
+                document.getElementById("detected-note").innerText = noteName;
+
+                if (rawTargetFrequency > 0) {
+                    const adjustedTarget = getAdjustedTargetFreq(rawTargetFrequency, freq);
+                    updateTargetDisplay();
+
+                    const centsDiff = Math.round(1200 * Math.log2(freq / adjustedTarget));
+                    const centsEl = document.getElementById("cents-display");
+                    centsEl.innerText = `${centsDiff > 0 ? '+' : ''}${centsDiff}c`;
+
+                    const needlePos = Math.max(0, Math.min(100, 50 + (centsDiff * 0.5)));
+                    needle.style.left = `${needlePos}%`;
+
+                    updateFloatingTracer(centsDiff, tracer);
+
+                    if (Math.abs(centsDiff) <= toleranceCents) {
+                        centsEl.style.color = "#4ccd99";
+                        needle.style.backgroundColor = "#4ccd99";
+                        
+                        if (mode === "step") {
+                            if (!correctPitchStartTime) correctPitchStartTime = Date.now();
+                            else if (Date.now() - correctPitchStartTime >= dwellTimeMs) {
+                                advanceCursor();
+                                correctPitchStartTime = null;
+                            }
+                        }
+                    } else {
+                        centsEl.style.color = "#ff4757";
+                        needle.style.backgroundColor = "#ff4757";
+                        correctPitchStartTime = null;
+                    }
+                }
+            } else {
+                document.getElementById("detected-note").innerText = "--";
+                document.getElementById("cents-display").innerText = "0c";
+                needle.style.left = "50%";
+                needle.style.backgroundColor = "#aaa";
+                tracer.style.display = "none";
+                correctPitchStartTime = null;
+            }
+
+            requestAnimationFrame(detectPitchLoop);
+        }
+
+        function updateFloatingTracer(centsDiff, tracer) {
+            try {
+                const container = document.getElementById("score-container");
+                const cursorEl = osmd.cursor.cursorElement || document.querySelector("#score-container img[style*='z-index'], #score-container svg rect[fill*='#e94560']");
+                
+                if (cursorEl && rawTargetFrequency > 0) {
+                    const cRect = cursorEl.getBoundingClientRect();
+                    const contRect = container.getBoundingClientRect();
+                    
+                    const leftPos = (cRect.left - contRect.left) + container.scrollLeft + cRect.width + 15;
+                    const baseTop = (cRect.top - contRect.top) + container.scrollTop + (cRect.height / 2) - 12;
+                    
+                    const verticalShift = Math.max(-45, Math.min(45, -centsDiff * 0.6));
+                    
+                    tracer.style.left = `${leftPos}px`;
+                    tracer.style.top = `${baseTop + verticalShift}px`;
+                    tracer.style.display = "flex";
+                    
+                    if (Math.abs(centsDiff) <= toleranceCents) {
+                        tracer.className = "tracer-correct";
+                        tracer.innerHTML = `● Afinada (${centsDiff > 0 ? '+' : ''}${centsDiff}c)`;
+                    } else if (centsDiff > 0) {
+                        tracer.className = "tracer-high";
+                        tracer.innerHTML = `▲ Acima (+${centsDiff}c)`;
+                    } else {
+                        tracer.className = "tracer-low";
+                        tracer.innerHTML = `▼ Abaixo (${centsDiff}c)`;
+                    }
+                } else {
+                    tracer.style.display = "none";
+                }
+            } catch(e) { tracer.style.display = "none"; }
+        }
+
+        function advanceCursor() {
+            try {
+                osmd.cursor.next();
+                updateTargetNoteFromCursor();
+            } catch (e) { stopRealTimeClock(); }
+        }
+
+        function startRealTimeClock() {
+            stopRealTimeClock();
+            const intervalMs = (60 / bpm) * 1000;
+            realTimeTimer = setInterval(() => advanceCursor(), intervalMs);
+        }
+
+        function stopRealTimeClock() {
+            if (realTimeTimer) clearInterval(realTimeTimer);
+        }
+
+        function autoCorrelate(buf, sampleRate) {
+            let size = buf.length;
+            let rms = 0;
+            for (let i = 0; i < size; i++) { let val = buf[i]; rms += val * val; }
+            rms = Math.sqrt(rms / size);
+            if (rms < 0.015) return -1;
+
+            let r1 = 0, r2 = size - 1, thres = 0.2;
+            for (let i = 0; i < size / 2; i++) if (Math.abs(buf[i]) < thres) { r1 = i; break; }
+            for (let i = 1; i < size / 2; i++) if (Math.abs(buf[size - i]) < thres) { r2 = size - i; break; }
+
+            buf = buf.slice(r1, r2);
+            size = buf.length;
+
+            let c = new Array(size).fill(0);
+            for (let i = 0; i < size; i++) for (let j = 0; j < size - i; j++) c[i] += buf[j] * buf[j + i];
+
+            let d = 0;
+            while (c[d] > c[d + 1]) d++;
+            let maxval = -1, maxpos = -1;
+            for (let i = d; i < size; i++) if (c[i] > maxval) { maxval = c[i]; maxpos = i; }
+            let T0 = maxpos;
+            let x1 = c[T0 - 1], x2 = c[T0], x3 = c[T0 + 1];
+            let a = (x1 + x3 - 2 * x2) / 2;
+            let b = (x3 - x1) / 2;
+            if (a) T0 = T0 - b / (2 * a);
+
+            return sampleRate / T0;
+        }
+    </script>
+</body>
+</html>
