@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Afinador Vocal Gráfico SATB - V9 Pro Studio</title>
+    <style>
+        :root {
+            --bg-dark: #09090b;
+            --panel-bg: rgba(24, 24, 29, 0.85);
+            --panel-border: rgba(255, 255, 255, 0.08);
+            --text: #f3f4f6;
+            --text-muted: #9ca3af;
+            --green-target: #10b981;
+            --green-glow: #00ff88;
+            --red-voice: #f43f5e;
+            --accent: #6366f1;
+            --accent-hover: #4f46e5;
+            --warning: #f59e0b;
+            --surface: #1f1f26;
+            --surface-hover: #2a2a35;
+        }
+
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            overflow: hidden; background-color: var(--bg-dark);
+            color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            user-select: none;
+        }
+
+        #pitchCanvas {
+            position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1;
+        }
+
+        .controls-overlay {
+            position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+            z-index: 10; background: var(--panel-bg); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+            padding: 12px 16px; border-radius: 14px; border: 1px solid var(--panel-border);
+            display: flex; flex-direction: column; gap: 10px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.05);
+            width: fit-content; max-width: 95vw;
+        }
+
+        .controls-row {
+            display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: center; width: 100%;
+        }
+
+        .row-divider {
+            width: 100%; height: 1px; background: rgba(255, 255, 255, 0.06); margin: 2px 0;
+        }
+
+        button, select {
+            background: var(--surface); color: var(--text); border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 7px 12px; border-radius: 8px; font-size: 0.85rem; font-weight: 500;
+            cursor: pointer; transition: all 0.15s ease; outline: none;
+            display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 36px;
+            box-sizing: border-box;
+        }
+
+        button:hover, select:hover { 
+            background: var(--surface-hover); border-color: rgba(255, 255, 255, 0.2); 
+        }
+
+        button:active { transform: translateY(1px); }
+
+        button.mic-btn { background: #27272a; border-color: rgba(255,255,255,0.15); }
+        button.mic-btn.active { background: #064e3b; border-color: #059669; color: #34d399; font-weight: 600; }
+        .led-dot { width: 8px; height: 8px; border-radius: 50%; background: #71717a; }
+        button.mic-btn.active .led-dot { background: var(--green-glow); box-shadow: 0 0 8px var(--green-glow); }
+
+        button.primary-action { 
+            background: var(--accent); border-color: #818cf8; color: #ffffff; font-weight: 600; 
+            box-shadow: 0 2px 10px rgba(99, 102, 241, 0.3);
+        }
+        button.primary-action:hover { background: var(--accent-hover); }
+
+        button.secondary-action { background: #27272a; color: #d4d4d8; }
+        button.secondary-action:hover { background: #3f3f46; color: #fff; }
+
+        button.hold-btn.hold-active { 
+            background: var(--warning); border-color: #fbbf24; color: #000; font-weight: bold; 
+            box-shadow: 0 0 12px rgba(245, 158, 11, 0.4);
+        }
+
+        .key-badge {
+            background: rgba(0, 0, 0, 0.35); border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 4px; padding: 1px 5px; font-size: 0.7rem; font-family: monospace;
+            color: var(--text-muted); margin-left: 4px;
+        }
+        button.primary-action .key-badge { background: rgba(0,0,0,0.25); color: #e0e7ff; border-color: rgba(255,255,255,0.25); }
+        button.hold-active .key-badge { background: rgba(0,0,0,0.2); color: #000; border-color: rgba(0,0,0,0.3); }
+
+        .slider-group, .toggle-group {
+            display: flex; align-items: center; gap: 8px; background: rgba(0, 0, 0, 0.3);
+            padding: 0 12px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.08); 
+            font-size: 0.8rem; color: var(--text-muted); height: 36px; box-sizing: border-box;
+        }
+        
+        .slider-group input[type="range"] {
+            width: 80px; accent-color: var(--accent); cursor: pointer; height: 4px;
+        }
+
+        .toggle-group label { cursor: pointer; color: var(--text); font-weight: 500; }
+        input[type="checkbox"] { cursor: pointer; accent-color: var(--green-target); width: 15px; height: 15px; margin: 0; }
+
+        .status-bar {
+            position: absolute; top: 125px; left: 16px; z-index: 10;
+            display: flex; flex-direction: column; gap: 8px; pointer-events: none;
+            font-family: 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace; font-size: 0.95rem;
+        }
+
+        .status-badge {
+            background: rgba(18, 18, 23, 0.85); padding: 6px 12px; border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.08); border-left: 4px solid #555; 
+            backdrop-filter: blur(8px); width: fit-content;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+
+        .target-badge { border-left-color: var(--green-glow); color: var(--green-glow); font-weight: bold; }
+        .voice-badge { border-left-color: var(--red-voice); color: var(--red-voice); font-weight: bold; }
+        .in-tune { color: #00ffff !important; border-left-color: #00ffff !important; text-shadow: 0 0 8px rgba(0,255,255,0.4); }
+
+        .shortcuts-info {
+            position: absolute; bottom: 12px; right: 16px; z-index: 10;
+            background: rgba(18, 18, 23, 0.8); padding: 6px 12px; border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.08); font-size: 0.75rem; color: var(--text-muted);
+            backdrop-filter: blur(8px); pointer-events: none;
+        }
+        .shortcuts-info kbd {
+            background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.15); border-radius: 4px;
+            padding: 1px 5px; color: #fff; font-family: monospace; font-size: 0.7rem;
+        }
+
+        .pause-watermark {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            font-size: 5rem; font-weight: 800; color: rgba(245, 158, 11, 0.12);
+            z-index: 5; pointer-events: none; display: none; letter-spacing: 8px;
+            text-transform: uppercase;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- PAINEL SUPERIOR -->
+    <div class="controls-overlay">
+        <!-- Linha 1: Controles de Áudio e Estúdio -->
+        <div class="controls-row">
+            <button id="btn-mic" class="mic-btn" title="Ativar ou desativar captação do microfone">
+                <span class="led-dot"></span> Ativar Mic
+            </button>
+            
+            <select id="satb-select" title="Selecione a extensão vocal do aluno (SATB)">
+                <option value="S">🎵 Soprano (Mi4 - Lá5)</option>
+                <option value="A">🎵 Contralto / Alto (Lá3 - Mi5)</option>
+                <option value="T">🎵 Tenor (Mi3 - Sol4)</option>
+                <option value="B">🎵 Baixo (Sol2 - Dó4)</option>
+            </select>
+
+            <button id="btn-new-note" class="primary-action" title="Gerar nova nota aleatória">
+                🎹 Nova Nota <span class="key-badge">Enter</span>
+            </button>
+            
+            <button id="btn-repeat" class="secondary-action" title="Repetir o som da nota atual">
+                🔁 Repetir <span class="key-badge">R</span>
+            </button>
+            
+            <button id="btn-sine" class="secondary-action" title="Tocar onda senoidal pura de referência por 5 segundos">
+                〰️ Teste Sine
+            </button>
+            
+            <button id="btn-hold" class="hold-btn secondary-action" title="Congelar/descongelar o gráfico visual">
+                ⏸️ Hold <span class="key-badge">Espaço</span>
+            </button>
+        </div>
+
+        <div class="row-divider"></div>
+
+        <!-- Linha 2: Calibração e Zoom -->
+        <div class="controls-row">
+            <select id="tolerance-select" title="Precisão exigida para considerar a voz afinada">
+                <option value="10">🎯 Exigência: Alta (±10 cents / Studio)</option>
+                <option value="25" selected>🎯 Exigência: Média (±25 cents - Recomendado)</option>
+                <option value="40">🎯 Exigência: Leve (±40 cents / Alunos)</option>
+                <option value="50">🎯 Exigência: Baixa (±50 cents / Iniciante)</option>
+            </select>
+
+            <div class="slider-group" title="Volume da Nota de Referência">
+                <span>🔊 Vol:</span>
+                <input type="range" id="volume-slider" min="0" max="1" step="0.05" value="0.4">
+            </div>
+
+            <select id="zoom-select" title="Zoom Vertical (Altura das notas na tela)">
+                <option value="octave">↕️ Zoom Vert: 1 Oitava (Padrão)</option>
+                <option value="voice">↕️ Zoom Vert: Extensão da Voz</option>
+                <option value="wide">↕️ Zoom Vert: Amplo (3 Oitavas)</option>
+            </select>
+
+            <select id="time-select" title="Zoom Horizontal (Velocidade do tempo na tela)">
+                <option value="5">↔️ Zoom Horiz: 5s (Ultra Detalhado / Vibrato)</option>
+                <option value="10">↔️ Zoom Horiz: 10 Segundos</option>
+                <option value="30">↔️ Zoom Horiz: 30 Segundos</option>
+                <option value="60" selected>↔️ Zoom Horiz: 60s (Padrão)</option>
+            </select>
+
+            <div class="toggle-group" title="Ativar ou desativar som de referência ao trocar nota">
+                <input type="checkbox" id="check-sound" checked>
+                <label for="check-sound">Som</label>
+            </div>
+
+            <div class="toggle-group" title="Mostrar ou ocultar linha verde de referência">
+                <input type="checkbox" id="check-green" checked>
+                <label for="check-green">🟢 Gabarito</label>
+            </div>
+        </div>
+    </div>
+
+    <!-- STATUS -->
+    <div class="status-bar">
+        <div class="status-badge target-badge" id="target-display">Alvo: Clique em "Nova Nota" ou [Enter]</div>
+        <div class="status-badge voice-badge" id="voice-display">Voz: Aguardando microfone...</div>
+    </div>
+
+    <div id="pause-watermark" class="pause-watermark">CONGELADO</div>
+
+    <div class="shortcuts-info">
+        💡 <kbd>Espaço</kbd> Congelar | <kbd>Enter</kbd> Nova Nota | <kbd>R</kbd> Repetir Nota
+    </div>
+
+    <canvas id="pitchCanvas"></canvas>
+
+    <script>
+        const NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+        
+        // RANGES REFINADOS: Cortamos as notas mais graves de cada voz para focar na região média e aguda
+        const RANGES = {
+            S: { min: 64, max: 81 }, // Mi4 a Lá5 (Cortado de Dó4 para Mi4)
+            A: { min: 57, max: 76 }, // Lá3 a Mi5 (Cortado de Sol3 para Lá3)
+            T: { min: 52, max: 67 }, // Mi3 a Sol4 (Cortado de Dó3 para Mi3)
+            B: { min: 43, max: 60 }  // Sol2 a Dó4 (Cortado de Mi2 para Sol2)
+        };
+
+        let audioCtx = null, analyser = null, micStream = null;
+        let activeSynthNodes = []; 
+        
+        let targetMidi = 64, currentVoiceMidi = null;
+        let isMicActive = false, isHold = false;
+        
+        let history = []; 
+        const MAX_BUFFER = 3600; 
+
+        const btnMic = document.getElementById('btn-mic');
+        const btnNewNote = document.getElementById('btn-new-note');
+        const btnRepeat = document.getElementById('btn-repeat');
+        const btnSine = document.getElementById('btn-sine');
+        const btnHold = document.getElementById('btn-hold');
+        const selectSatb = document.getElementById('satb-select');
+        const selectZoom = document.getElementById('zoom-select');
+        const selectTime = document.getElementById('time-select');
+        const selectTolerance = document.getElementById('tolerance-select');
+        const volumeSlider = document.getElementById('volume-slider');
+        const checkSound = document.getElementById('check-sound');
+        const checkGreen = document.getElementById('check-green');
+        const targetDisplay = document.getElementById('target-display');
+        const voiceDisplay = document.getElementById('voice-display');
+        const pauseWatermark = document.getElementById('pause-watermark');
+        const canvas = document.getElementById('pitchCanvas');
+        const ctx = canvas.getContext('2d');
+
+        function midiToFreq(midi) { return 440 * Math.pow(2, (midi - 69) / 12); }
+        function freqToMidi(freq) { return 12 * Math.log2(freq / 440) + 69; }
+        
+        function getNoteName(midi) {
+            const rounded = Math.round(midi);
+            const name = NOTE_NAMES[rounded % 12];
+            const octave = Math.floor(rounded / 12) - 1;
+            return `${name}${octave}`;
+        }
+
+        // --- GERAÇÃO DE NOTAS E SINTETIZADORES ---
+        function generateRandomNote() {
+            if (!audioCtx) initAudio();
+            const voice = selectSatb.value;
+            const range = RANGES[voice];
+            targetMidi = Math.floor(Math.random() * (range.max - range.min + 1)) + range.min;
+            
+            const freq = midiToFreq(targetMidi);
+            targetDisplay.textContent = `Alvo: ${getNoteName(targetMidi)} (${freq.toFixed(1)} Hz)`;
+            if (isHold) toggleHold();
+            playPianoNote();
+        }
+
+        function playPianoNote() {
+            if (!audioCtx) return;
+            
+            activeSynthNodes.forEach(node => { try { node.stop(); node.disconnect(); } catch(e){} });
+            activeSynthNodes = [];
+
+            if (checkSound.checked) {
+                const vol = parseFloat(volumeSlider.value);
+                const freq = midiToFreq(targetMidi);
+                const now = audioCtx.currentTime;
+                const duration = 6.0; 
+
+                const masterGain = audioCtx.createGain();
+                masterGain.gain.setValueAtTime(0, now);
+                masterGain.gain.linearRampToValueAtTime(vol, now + 0.015);
+                masterGain.gain.exponentialRampToValueAtTime(vol * 0.25, now + 0.8);
+                masterGain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+                masterGain.connect(audioCtx.destination);
+
+                const filter = audioCtx.createBiquadFilter();
+                filter.type = "lowpass";
+                filter.frequency.setValueAtTime(freq * 5, now);
+                filter.frequency.exponentialRampToValueAtTime(freq * 1.2, now + duration);
+                filter.connect(masterGain);
+
+                const osc1 = audioCtx.createOscillator();
+                osc1.type = 'triangle';
+                osc1.frequency.setValueAtTime(freq, now);
+                osc1.connect(filter);
+
+                const osc2 = audioCtx.createOscillator();
+                const gain2 = audioCtx.createGain();
+                gain2.gain.value = 0.35; 
+                osc2.type = 'sawtooth';
+                osc2.frequency.setValueAtTime(freq, now);
+                osc2.detune.value = 4; 
+                osc2.connect(gain2);
+                gain2.connect(filter);
+
+                osc1.start(now);
+                osc2.start(now);
+                osc1.stop(now + duration);
+                osc2.stop(now + duration);
+
+                activeSynthNodes.push(osc1, osc2);
+            }
+        }
+
+        function playSineReference() {
+            if (!audioCtx) initAudio();
+            
+            activeSynthNodes.forEach(node => { try { node.stop(); node.disconnect(); } catch(e){} });
+            activeSynthNodes = [];
+
+            if (checkSound.checked) {
+                const vol = parseFloat(volumeSlider.value);
+                const freq = midiToFreq(targetMidi);
+                const now = audioCtx.currentTime;
+                const duration = 5.0;
+
+                const masterGain = audioCtx.createGain();
+                masterGain.gain.setValueAtTime(0, now);
+                masterGain.gain.linearRampToValueAtTime(vol, now + 0.05); 
+                masterGain.gain.setValueAtTime(vol, now + duration - 0.1);
+                masterGain.gain.linearRampToValueAtTime(0.0001, now + duration); 
+                masterGain.connect(audioCtx.destination);
+
+                const osc = audioCtx.createOscillator();
+                osc.type = 'sine'; 
+                osc.frequency.setValueAtTime(freq, now);
+                osc.connect(masterGain);
+
+                osc.start(now);
+                osc.stop(now + duration);
+
+                activeSynthNodes.push(osc);
+            }
+        }
+
+        checkSound.addEventListener('change', () => {
+            if (checkSound.checked) playPianoNote();
+            else { activeSynthNodes.forEach(node => { try { node.stop(); } catch(e){} }); }
+        });
+
+        btnNewNote.addEventListener('click', generateRandomNote);
+        btnRepeat.addEventListener('click', () => { playPianoNote(); });
+        btnSine.addEventListener('click', playSineReference);
+        selectSatb.addEventListener('change', generateRandomNote);
+
+        function toggleHold() {
+            isHold = !isHold;
+            if (isHold) {
+                btnHold.innerHTML = `▶️ Continuar <span class="key-badge">Espaço</span>`;
+                btnHold.classList.add('hold-active');
+                pauseWatermark.style.display = "block";
+            } else {
+                btnHold.innerHTML = `⏸️ Hold <span class="key-badge">Espaço</span>`;
+                btnHold.classList.remove('hold-active');
+                pauseWatermark.style.display = "none";
+            }
+        }
+        btnHold.addEventListener('click', toggleHold);
+
+        window.addEventListener('keydown', (e) => {
+            if (document.activeElement.tagName === "SELECT" || document.activeElement.tagName === "INPUT") {
+                if (e.code !== 'Enter' && e.code !== 'NumpadEnter') return;
+            }
+            if (e.code === 'Space') { 
+                e.preventDefault(); toggleHold(); 
+            } else if (e.code === 'Enter' || e.code === 'NumpadEnter') { 
+                e.preventDefault(); generateRandomNote(); 
+            } else if (e.code === 'KeyR') {
+                e.preventDefault(); playPianoNote();
+            }
+        });
+
+        async function initAudio() {
+            if (audioCtx) return;
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+
+        btnMic.addEventListener('click', async () => {
+            await initAudio();
+            if (audioCtx.state === 'suspended') await audioCtx.resume();
+
+            try {
+                micStream = await navigator.mediaDevices.getUserMedia({ 
+                    audio: { echoCancellation: false, autoGainControl: false, noiseSuppression: false } 
+                });
+                
+                const micSource = audioCtx.createMediaStreamSource(micStream);
+                
+                // NOVO: Filtro Passa-Alta para cortar ruídos graves de ambiente (vibração, respiração grave, AC)
+                const highpassFilter = audioCtx.createBiquadFilter();
+                highpassFilter.type = "highpass";
+                highpassFilter.frequency.value = 80; // Corta tudo abaixo de 80 Hz antes da análise
+                
+                analyser = audioCtx.createAnalyser();
+                analyser.fftSize = 2048;
+                
+                micSource.connect(highpassFilter);
+                highpassFilter.connect(analyser);
+                
+                isMicActive = true;
+                btnMic.innerHTML = `<span class="led-dot"></span> Mic Ativo`;
+                btnMic.classList.add('active');
+                if (targetMidi === 64) generateRandomNote();
+                updatePitch();
+            } catch (err) { alert("Erro ao acessar microfone."); }
+        });
+
+        function autoCorrelate(buf, sampleRate) {
+            let size = buf.length; let rms = 0;
+            for (let i = 0; i < size; i++) rms += buf[i] * buf[i];
+            rms = Math.sqrt(rms / size);
+            
+            // Sensibilidade levemente mais exigente para ignorar ruído elétrico/silêncio
+            if (rms < 0.018) return -1;
+
+            let r1 = 0, r2 = size - 1, thres = 0.2;
+            for (let i = 0; i < size / 2; i++) if (Math.abs(buf[i]) < thres) { r1 = i; break; }
+            for (let i = 1; i < size / 2; i++) if (Math.abs(buf[size - i]) < thres) { r2 = size - i; break; }
+
+            buf = buf.slice(r1, r2); size = buf.length;
+            let c = new Array(size).fill(0);
+            for (let i = 0; i < size; i++)
+                for (let j = 0; j < size - i; j++) c[i] += buf[j] * buf[j + i];
+
+            let d = 0; while (c[d] > c[d + 1]) d++;
+            let maxval = -1, maxpos = -1;
+            for (let i = d; i < size; i++) if (c[i] > maxval) { maxval = c[i]; maxpos = i; }
+            
+            // NOVO: Filtro de Clareza Acústica. Se a onda não tiver forte repetição periódica (como a voz humana tem), ignora o traço na tela.
+            if (maxval < 0.15) return -1;
+
+            let T0 = maxpos;
+            let x1 = c[T0 - 1], x2 = c[T0], x3 = c[T0 + 1];
+            let a = (x1 + x3 - 2 * x2) / 2; let b = (x3 - x1) / 2;
+            if (a) T0 = T0 - b / (2 * a);
+
+            return sampleRate / T0;
+        }
+
+        function updatePitch() {
+            if (!isMicActive) return;
+
+            const buf = new Float32Array(analyser.fftSize);
+            analyser.getFloatTimeDomainData(buf);
+            const freq = autoCorrelate(buf, audioCtx.sampleRate);
+
+            if (!isHold) {
+                if (freq !== -1 && freq > 70 && freq < 1200) {
+                    currentVoiceMidi = freqToMidi(freq);
+                    const diffCents = Math.round((currentVoiceMidi - targetMidi) * 100);
+                    
+                    const toleranceCents = parseInt(selectTolerance.value);
+                    
+                    let diffText = "";
+                    if (Math.abs(diffCents) <= toleranceCents) {
+                        diffText = "🎯 AFINADO!";
+                        voiceDisplay.classList.add('in-tune');
+                    } else {
+                        diffText = diffCents > 0 ? `+${diffCents} cents (Sharp/Alto)` : `${diffCents} cents (Flat/Baixo)`;
+                        voiceDisplay.classList.remove('in-tune');
+                    }
+                    
+                    voiceDisplay.textContent = `Voz: ${getNoteName(currentVoiceMidi)} | ${diffText}`;
+                    history.push(currentVoiceMidi);
+                } else {
+                    voiceDisplay.textContent = "Voz: Cante para detectar...";
+                    voiceDisplay.classList.remove('in-tune');
+                    history.push(null);
+                }
+
+                if (history.length > MAX_BUFFER) history.shift();
+            }
+
+            requestAnimationFrame(updatePitch);
+        }
+
+        // --- RENDERIZAÇÃO DO GRÁFICO ---
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        function drawLoop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            let minMidiView, maxMidiView;
+            const zoomMode = selectZoom.value;
+            const currentVoice = selectSatb.value;
+
+            if (zoomMode === 'octave') {
+                minMidiView = targetMidi - 6; maxMidiView = targetMidi + 6;
+            } else if (zoomMode === 'voice') {
+                minMidiView = RANGES[currentVoice].min - 1; maxMidiView = RANGES[currentVoice].max + 1;
+            } else if (zoomMode === 'wide') {
+                minMidiView = targetMidi - 18; maxMidiView = targetMidi + 18;
+            }
+
+            function midiToY(midi) {
+                return canvas.height - ((midi - minMidiView) / (maxMidiView - minMidiView)) * canvas.height;
+            }
+
+            const secondsView = parseInt(selectTime.value);
+            const samplesToDisplay = secondsView * 60;
+            const displayHistory = history.slice(-samplesToDisplay);
+
+            ctx.lineWidth = 1; ctx.font = "13px -apple-system, BlinkMacSystemFont, sans-serif";
+            for (let m = Math.ceil(minMidiView); m <= Math.floor(maxMidiView); m++) {
+                const y = midiToY(m);
+                const isTarget = (m === targetMidi);
+                ctx.strokeStyle = isTarget ? "rgba(0, 255, 136, 0.25)" : "rgba(255, 255, 255, 0.04)";
+                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+                ctx.fillStyle = isTarget ? "#00ff88" : "rgba(255, 255, 255, 0.25)";
+                ctx.fillText(getNoteName(m), 16, y - 6);
+            }
+
+            if (checkGreen.checked) {
+                const targetY = midiToY(targetMidi);
+                ctx.strokeStyle = "#00ff88"; ctx.lineWidth = 3; ctx.setLineDash([8, 6]);
+                ctx.beginPath(); ctx.moveTo(0, targetY); ctx.lineTo(canvas.width, targetY); ctx.stroke();
+                ctx.setLineDash([]);
+            }
+
+            if (displayHistory.length > 0) {
+                ctx.lineWidth = 3.5;
+                ctx.lineCap = "round";
+                ctx.lineJoin = "round";
+
+                const stepX = canvas.width / samplesToDisplay;
+                let isDrawing = false;
+                let prevVal = null;
+                
+                const toleranceSemitones = parseInt(selectTolerance.value) / 100;
+
+                for (let i = 0; i < displayHistory.length; i++) {
+                    const val = displayHistory[i];
+                    const x = i * stepX;
+
+                    if (val !== null) {
+                        const y = midiToY(val);
+                        
+                        if (prevVal !== null && Math.abs(val - prevVal) > 2.0) {
+                            isDrawing = false;
+                        }
+
+                        if (Math.abs(val - targetMidi) <= toleranceSemitones) {
+                            ctx.strokeStyle = "#00ffff"; 
+                        } else {
+                            ctx.strokeStyle = "#f43f5e"; 
+                        }
+
+                        if (!isDrawing) {
+                            ctx.beginPath(); ctx.moveTo(x, y); isDrawing = true;
+                        } else {
+                            ctx.lineTo(x, y); ctx.stroke();
+                            ctx.beginPath(); ctx.moveTo(x, y);
+                        }
+                        prevVal = val;
+                    } else {
+                        isDrawing = false;
+                        prevVal = null;
+                    }
+                }
+            }
+
+            requestAnimationFrame(drawLoop);
+        }
+
+        drawLoop();
+    </script>
+</body>
+</html>
