@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -216,7 +215,7 @@
           TU-PRO
         </span>
         <h1 class="text-sm sm:text-base font-bold tracking-tight text-slate-200">
-          Afinador Cromático &amp; Violão
+          Afinador Strobe Multi-Instrumentos
         </h1>
       </div>
       <div class="flex items-center gap-1.5">
@@ -227,24 +226,17 @@
 
     <!-- Main Pedal Chassis -->
     <section class="pedal-chassis rounded-2xl p-3.5 sm:p-4 flex flex-col gap-3.5">
-      <!-- Mode & Instrument Switcher -->
-      <div class="grid grid-cols-2 gap-2">
+      <!-- Display Mode & Instrument Switcher -->
+      <div class="flex flex-col gap-2">
         <div class="bg-[#0b0d12] p-1 rounded-xl border border-white/5 flex">
-          <button id="btnModeCent" type="button" class="flex-1 py-2 px-2 rounded-lg text-xs font-bold tracking-wide transition-all bg-sky-500 text-slate-950 shadow">
-            CENT
+          <button id="btnModeCent" type="button" class="flex-1 py-2 px-2 rounded-lg text-xs font-bold tracking-wide transition-all text-slate-400 hover:text-slate-200">
+            CENT (CLÁSSICO)
           </button>
-          <button id="btnModeStrobe" type="button" class="flex-1 py-2 px-2 rounded-lg text-xs font-bold tracking-wide transition-all text-slate-400 hover:text-slate-200">
-            STROBE
+          <button id="btnModeStrobe" type="button" class="flex-1 py-2 px-2 rounded-lg text-xs font-bold tracking-wide transition-all bg-sky-500 text-slate-950 shadow">
+            STROBE (PIANO)
           </button>
         </div>
-        <div class="bg-[#0b0d12] p-1 rounded-xl border border-white/5 flex">
-          <button id="btnInstGuitar" type="button" class="flex-1 py-2 px-2 rounded-lg text-xs font-bold tracking-wide transition-all bg-emerald-500 text-slate-950 shadow">
-            VIOLÃO
-          </button>
-          <button id="btnInstChromatic" type="button" class="flex-1 py-2 px-2 rounded-lg text-xs font-bold tracking-wide transition-all text-slate-400 hover:text-slate-200">
-            PIANO / CROM
-          </button>
-        </div>
+        <div id="instrumentPills" class="flex flex-wrap gap-1.5" aria-label="Selecionar instrumento"></div>
       </div>
 
       <!-- BOSS LED Display Window -->
@@ -347,22 +339,16 @@
         </div>
       </div>
 
-      <!-- Guitar Tuning Presets & String Selector (Visible in Guitar Mode) -->
+      <!-- Instrument Tuning Presets & String Selector (Hidden in Chromatic Mode) -->
       <div id="guitarSection" class="flex flex-col gap-2.5">
         <div class="flex items-center justify-between gap-2">
           <label for="tuningSelect" class="text-xs font-semibold text-slate-400 uppercase tracking-wider">
             Afinação
           </label>
-          <select id="tuningSelect" class="flex-1 bg-[#0b0d12] border border-white/10 rounded-lg px-2.5 py-2 text-xs font-semibold text-slate-200 focus:outline-none focus:border-sky-400">
-            <option value="standard">Padrão (E A D G B E)</option>
-            <option value="dropd">Drop D (D A D G B E)</option>
-            <option value="halfstep">Meio Tom Abaixo (Eb Ab Db Gb Bb Eb)</option>
-            <option value="openg">Open G (D G D G B D)</option>
-            <option value="dadgad">DADGAD (D A D G A D)</option>
-          </select>
+          <select id="tuningSelect" class="flex-1 bg-[#0b0d12] border border-white/10 rounded-lg px-2.5 py-2 text-xs font-semibold text-slate-200 focus:outline-none focus:border-sky-400"></select>
         </div>
 
-        <!-- 6 String Buttons (Tap to hear reference tone or lock string) -->
+        <!-- Dynamic String Buttons (Tap to hear reference tone or lock string) -->
         <div id="stringButtons" class="grid grid-cols-6 gap-1.5"></div>
         <p class="text-[11px] text-slate-500 text-center">
           Toque numa corda para ouvir o tom de referência (ou travar/destravar o alvo).
@@ -424,47 +410,231 @@
     (function () {
       const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
-      const TUNINGS = {
-        standard: [
-          { label: '6E', note: 'E', octave: 2, midi: 40 },
-          { label: '5A', note: 'A', octave: 2, midi: 45 },
-          { label: '4D', note: 'D', octave: 3, midi: 50 },
-          { label: '3G', note: 'G', octave: 3, midi: 55 },
-          { label: '2B', note: 'B', octave: 3, midi: 59 },
-          { label: '1E', note: 'E', octave: 4, midi: 64 }
-        ],
-        dropd: [
-          { label: '6D', note: 'D', octave: 2, midi: 38 },
-          { label: '5A', note: 'A', octave: 2, midi: 45 },
-          { label: '4D', note: 'D', octave: 3, midi: 50 },
-          { label: '3G', note: 'G', octave: 3, midi: 55 },
-          { label: '2B', note: 'B', octave: 3, midi: 59 },
-          { label: '1E', note: 'E', octave: 4, midi: 64 }
-        ],
-        halfstep: [
-          { label: '6Eb', note: 'D#', octave: 2, midi: 39 },
-          { label: '5Ab', note: 'G#', octave: 2, midi: 44 },
-          { label: '4Db', note: 'C#', octave: 3, midi: 49 },
-          { label: '3Gb', note: 'F#', octave: 3, midi: 54 },
-          { label: '2Bb', note: 'A#', octave: 3, midi: 58 },
-          { label: '1Eb', note: 'D#', octave: 4, midi: 63 }
-        ],
-        openg: [
-          { label: '6D', note: 'D', octave: 2, midi: 38 },
-          { label: '5G', note: 'G', octave: 2, midi: 43 },
-          { label: '4D', note: 'D', octave: 3, midi: 50 },
-          { label: '3G', note: 'G', octave: 3, midi: 55 },
-          { label: '2B', note: 'B', octave: 3, midi: 59 },
-          { label: '1D', note: 'D', octave: 4, midi: 62 }
-        ],
-        dadgad: [
-          { label: '6D', note: 'D', octave: 2, midi: 38 },
-          { label: '5A', note: 'A', octave: 2, midi: 45 },
-          { label: '4D', note: 'D', octave: 3, midi: 50 },
-          { label: '3G', note: 'G', octave: 3, midi: 55 },
-          { label: '2A', note: 'A', octave: 3, midi: 57 },
-          { label: '1D', note: 'D', octave: 4, midi: 62 }
-        ]
+      const INSTRUMENTS = {
+        chromatic: {
+          name: 'Cromático',
+          tunings: {}
+        },
+        guitar: {
+          name: 'Violão',
+          tunings: {
+            standard: {
+              label: 'Padrão (E A D G B E)',
+              strings: [
+                { label: '6E', note: 'E', octave: 2, midi: 40 },
+                { label: '5A', note: 'A', octave: 2, midi: 45 },
+                { label: '4D', note: 'D', octave: 3, midi: 50 },
+                { label: '3G', note: 'G', octave: 3, midi: 55 },
+                { label: '2B', note: 'B', octave: 3, midi: 59 },
+                { label: '1E', note: 'E', octave: 4, midi: 64 }
+              ]
+            },
+            dropd: {
+              label: 'Drop D (D A D G B E)',
+              strings: [
+                { label: '6D', note: 'D', octave: 2, midi: 38 },
+                { label: '5A', note: 'A', octave: 2, midi: 45 },
+                { label: '4D', note: 'D', octave: 3, midi: 50 },
+                { label: '3G', note: 'G', octave: 3, midi: 55 },
+                { label: '2B', note: 'B', octave: 3, midi: 59 },
+                { label: '1E', note: 'E', octave: 4, midi: 64 }
+              ]
+            },
+            halfstep: {
+              label: 'Meio Tom Abaixo (Eb Ab Db Gb Bb Eb)',
+              strings: [
+                { label: '6Eb', note: 'D#', octave: 2, midi: 39 },
+                { label: '5Ab', note: 'G#', octave: 2, midi: 44 },
+                { label: '4Db', note: 'C#', octave: 3, midi: 49 },
+                { label: '3Gb', note: 'F#', octave: 3, midi: 54 },
+                { label: '2Bb', note: 'A#', octave: 3, midi: 58 },
+                { label: '1Eb', note: 'D#', octave: 4, midi: 63 }
+              ]
+            },
+            openg: {
+              label: 'Open G (D G D G B D)',
+              strings: [
+                { label: '6D', note: 'D', octave: 2, midi: 38 },
+                { label: '5G', note: 'G', octave: 2, midi: 43 },
+                { label: '4D', note: 'D', octave: 3, midi: 50 },
+                { label: '3G', note: 'G', octave: 3, midi: 55 },
+                { label: '2B', note: 'B', octave: 3, midi: 59 },
+                { label: '1D', note: 'D', octave: 4, midi: 62 }
+              ]
+            },
+            dadgad: {
+              label: 'DADGAD (D A D G A D)',
+              strings: [
+                { label: '6D', note: 'D', octave: 2, midi: 38 },
+                { label: '5A', note: 'A', octave: 2, midi: 45 },
+                { label: '4D', note: 'D', octave: 3, midi: 50 },
+                { label: '3G', note: 'G', octave: 3, midi: 55 },
+                { label: '2A', note: 'A', octave: 3, midi: 57 },
+                { label: '1D', note: 'D', octave: 4, midi: 62 }
+              ]
+            }
+          }
+        },
+        viola: {
+          name: 'Viola Caipira',
+          tunings: {
+            cebolao_d: {
+              label: 'Cebolão em Ré (A D F# A D)',
+              strings: [
+                { label: '5A', note: 'A', octave: 2, midi: 45 },
+                { label: '4D', note: 'D', octave: 3, midi: 50 },
+                { label: '3F#', note: 'F#', octave: 3, midi: 54 },
+                { label: '2A', note: 'A', octave: 3, midi: 57 },
+                { label: '1D', note: 'D', octave: 4, midi: 62 }
+              ]
+            },
+            cebolao_e: {
+              label: 'Cebolão em Mi (B E G# B E)',
+              strings: [
+                { label: '5B', note: 'B', octave: 2, midi: 47 },
+                { label: '4E', note: 'E', octave: 3, midi: 52 },
+                { label: '3G#', note: 'G#', octave: 3, midi: 56 },
+                { label: '2B', note: 'B', octave: 3, midi: 59 },
+                { label: '1E', note: 'E', octave: 4, midi: 64 }
+              ]
+            },
+            rio_abaixo: {
+              label: 'Rio Abaixo em Sol (G D G B D)',
+              strings: [
+                { label: '5G', note: 'G', octave: 2, midi: 43 },
+                { label: '4D', note: 'D', octave: 3, midi: 50 },
+                { label: '3G', note: 'G', octave: 3, midi: 55 },
+                { label: '2B', note: 'B', octave: 3, midi: 59 },
+                { label: '1D', note: 'D', octave: 4, midi: 62 }
+              ]
+            }
+          }
+        },
+        bass: {
+          name: 'Baixo',
+          tunings: {
+            bass4: {
+              label: '4 Cordas Padrão (E A D G)',
+              strings: [
+                { label: '4E', note: 'E', octave: 1, midi: 28 },
+                { label: '3A', note: 'A', octave: 1, midi: 33 },
+                { label: '2D', note: 'D', octave: 2, midi: 38 },
+                { label: '1G', note: 'G', octave: 2, midi: 43 }
+              ]
+            },
+            bass4_dropd: {
+              label: '4 Cordas Drop D (D A D G)',
+              strings: [
+                { label: '4D', note: 'D', octave: 1, midi: 26 },
+                { label: '3A', note: 'A', octave: 1, midi: 33 },
+                { label: '2D', note: 'D', octave: 2, midi: 38 },
+                { label: '1G', note: 'G', octave: 2, midi: 43 }
+              ]
+            },
+            bass5: {
+              label: '5 Cordas Padrão (B E A D G)',
+              strings: [
+                { label: '5B', note: 'B', octave: 0, midi: 23 },
+                { label: '4E', note: 'E', octave: 1, midi: 28 },
+                { label: '3A', note: 'A', octave: 1, midi: 33 },
+                { label: '2D', note: 'D', octave: 2, midi: 38 },
+                { label: '1G', note: 'G', octave: 2, midi: 43 }
+              ]
+            }
+          }
+        },
+        cavaco: {
+          name: 'Cavaco',
+          tunings: {
+            standard: {
+              label: 'Padrão (D4 G4 B4 D5)',
+              strings: [
+                { label: '4D', note: 'D', octave: 4, midi: 62 },
+                { label: '3G', note: 'G', octave: 4, midi: 67 },
+                { label: '2B', note: 'B', octave: 4, midi: 71 },
+                { label: '1D', note: 'D', octave: 5, midi: 74 }
+              ]
+            },
+            dgbe: {
+              label: 'Natural / Violão (D4 G4 B4 E5)',
+              strings: [
+                { label: '4D', note: 'D', octave: 4, midi: 62 },
+                { label: '3G', note: 'G', octave: 4, midi: 67 },
+                { label: '2B', note: 'B', octave: 4, midi: 71 },
+                { label: '1E', note: 'E', octave: 5, midi: 76 }
+              ]
+            },
+            quinta: {
+              label: 'Em Quintas (G3 D4 A4 E5)',
+              strings: [
+                { label: '4G', note: 'G', octave: 3, midi: 55 },
+                { label: '3D', note: 'D', octave: 4, midi: 62 },
+                { label: '2A', note: 'A', octave: 4, midi: 69 },
+                { label: '1E', note: 'E', octave: 5, midi: 76 }
+              ]
+            }
+          }
+        },
+        ukulele: {
+          name: 'Ukulele',
+          tunings: {
+            standard_highg: {
+              label: 'Padrão High-G (G4 C4 E4 A4)',
+              strings: [
+                { label: '4G', note: 'G', octave: 4, midi: 67 },
+                { label: '3C', note: 'C', octave: 4, midi: 60 },
+                { label: '2E', note: 'E', octave: 4, midi: 64 },
+                { label: '1A', note: 'A', octave: 4, midi: 69 }
+              ]
+            },
+            lowg: {
+              label: 'Low-G (G3 C4 E4 A4)',
+              strings: [
+                { label: '4G', note: 'G', octave: 3, midi: 55 },
+                { label: '3C', note: 'C', octave: 4, midi: 60 },
+                { label: '2E', note: 'E', octave: 4, midi: 64 },
+                { label: '1A', note: 'A', octave: 4, midi: 69 }
+              ]
+            },
+            baritone: {
+              label: 'Barítono (D3 G3 B3 E4)',
+              strings: [
+                { label: '4D', note: 'D', octave: 3, midi: 50 },
+                { label: '3G', note: 'G', octave: 3, midi: 55 },
+                { label: '2B', note: 'B', octave: 3, midi: 59 },
+                { label: '1E', note: 'E', octave: 4, midi: 64 }
+              ]
+            }
+          }
+        },
+        mandolin: {
+          name: 'Bandolim',
+          tunings: {
+            standard: {
+              label: 'Padrão (G3 D4 A4 E5)',
+              strings: [
+                { label: '4G', note: 'G', octave: 3, midi: 55 },
+                { label: '3D', note: 'D', octave: 4, midi: 62 },
+                { label: '2A', note: 'A', octave: 4, midi: 69 },
+                { label: '1E', note: 'E', octave: 5, midi: 76 }
+              ]
+            }
+          }
+        },
+        violin: {
+          name: 'Violino',
+          tunings: {
+            standard: {
+              label: 'Padrão (G3 D4 A4 E5)',
+              strings: [
+                { label: '4G', note: 'G', octave: 3, midi: 55 },
+                { label: '3D', note: 'D', octave: 4, midi: 62 },
+                { label: '2A', note: 'A', octave: 4, midi: 69 },
+                { label: '1E', note: 'E', octave: 5, midi: 76 }
+              ]
+            }
+          }
+        }
       };
 
       const state = {
@@ -507,8 +677,7 @@
       const fineGrid = document.getElementById('fineGrid');
       const btnModeCent = document.getElementById('btnModeCent');
       const btnModeStrobe = document.getElementById('btnModeStrobe');
-      const btnInstGuitar = document.getElementById('btnInstGuitar');
-      const btnInstChromatic = document.getElementById('btnInstChromatic');
+      const instrumentPills = document.getElementById('instrumentPills');
       const displayModeTag = document.getElementById('displayModeTag');
       const displayRefTag = document.getElementById('displayRefTag');
       const signalBar = document.getElementById('signalBar');
@@ -634,9 +803,53 @@
         }
       }
 
+      function getCurrentStrings() {
+        if (state.instrumentMode === 'chromatic') return [];
+        const inst = INSTRUMENTS[state.instrumentMode];
+        const tuning = inst.tunings[state.tuningKey] || Object.values(inst.tunings)[0];
+        return tuning ? tuning.strings : [];
+      }
+
+      function renderInstrumentPills() {
+        instrumentPills.innerHTML = '';
+        Object.entries(INSTRUMENTS).forEach(([key, inst]) => {
+          const active = state.instrumentMode === key;
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.textContent = inst.name;
+          btn.className =
+            'px-2.5 py-1.5 rounded-lg text-[11px] font-bold tracking-wide transition-all border ' +
+            (active
+              ? 'bg-emerald-500 text-slate-950 border-emerald-400 shadow'
+              : 'bg-[#0b0d12] text-slate-300 border-white/10 hover:border-sky-400/50 hover:text-white');
+          btn.addEventListener('click', () => setInstrumentMode(key));
+          instrumentPills.appendChild(btn);
+        });
+      }
+
+      function renderTuningSelect() {
+        if (state.instrumentMode === 'chromatic') return;
+        const inst = INSTRUMENTS[state.instrumentMode];
+        const entries = Object.entries(inst.tunings);
+        if (!inst.tunings[state.tuningKey]) {
+          state.tuningKey = entries[0][0];
+        }
+        tuningSelect.innerHTML = '';
+        entries.forEach(([key, t]) => {
+          const opt = document.createElement('option');
+          opt.value = key;
+          opt.textContent = t.label;
+          opt.selected = key === state.tuningKey;
+          tuningSelect.appendChild(opt);
+        });
+      }
+
       function renderStringButtons() {
-        const strings = TUNINGS[state.tuningKey];
+        const strings = getCurrentStrings();
         stringButtons.innerHTML = '';
+        if (strings.length === 0) return;
+        stringButtons.className = 'grid gap-1.5';
+        stringButtons.style.gridTemplateColumns = `repeat(${strings.length}, minmax(0, 1fr))`;
         strings.forEach((s, idx) => {
           const isLocked = state.lockedStringIdx === idx;
           const btn = document.createElement('button');
@@ -672,8 +885,8 @@
           return { freq: -1, rms };
         }
 
-        const minFreq = 55; // ~A1 (covers drop tunings)
-        const maxFreq = 1200; // covers guitar & upper piano range
+        const minFreq = 27; // ~A0 (covers 5-string bass B0 & piano lowest notes)
+        const maxFreq = 1400; // covers violin/mandolin E5 & upper range
         const minLag = Math.floor(sampleRate / maxFreq);
         const maxLag = Math.min(Math.floor(sampleRate / minFreq), Math.floor(SIZE / 2));
 
@@ -729,8 +942,8 @@
       }
 
       function resolveTarget(freq) {
-        if (state.instrumentMode === 'guitar') {
-          const strings = TUNINGS[state.tuningKey];
+        if (state.instrumentMode !== 'chromatic') {
+          const strings = getCurrentStrings();
           if (state.lockedStringIdx !== null) {
             const target = strings[state.lockedStringIdx];
             const targetFreq = midiToFreq(target.midi);
@@ -913,9 +1126,9 @@
 
         if (state.simActive) {
           // Demo mode uses slider cents against currently selected string (or A4 in chromatic)
-          const strings = TUNINGS[state.tuningKey];
+          const strings = getCurrentStrings();
           const refObj =
-            state.instrumentMode === 'guitar'
+            state.instrumentMode !== 'chromatic' && strings.length > 0
               ? strings[state.lockedStringIdx !== null ? state.lockedStringIdx : 0]
               : { note: 'A', octave: 4, midi: 69 };
           const tf = midiToFreq(refObj.midi);
@@ -1072,14 +1285,14 @@
 
       function setInstrumentMode(inst) {
         state.instrumentMode = inst;
-        if (inst === 'guitar') {
-          btnInstGuitar.className = 'flex-1 py-2 px-2 rounded-lg text-xs font-bold tracking-wide transition-all bg-emerald-500 text-slate-950 shadow';
-          btnInstChromatic.className = 'flex-1 py-2 px-2 rounded-lg text-xs font-bold tracking-wide transition-all text-slate-400 hover:text-slate-200';
-          guitarSection.classList.remove('hidden');
-        } else {
-          btnInstChromatic.className = 'flex-1 py-2 px-2 rounded-lg text-xs font-bold tracking-wide transition-all bg-emerald-500 text-slate-950 shadow';
-          btnInstGuitar.className = 'flex-1 py-2 px-2 rounded-lg text-xs font-bold tracking-wide transition-all text-slate-400 hover:text-slate-200';
+        state.lockedStringIdx = null;
+        renderInstrumentPills();
+        if (inst === 'chromatic') {
           guitarSection.classList.add('hidden');
+        } else {
+          guitarSection.classList.remove('hidden');
+          renderTuningSelect();
+          renderStringButtons();
         }
       }
 
@@ -1118,8 +1331,7 @@
       btnThemeBoss.addEventListener('click', () => setStrobeTheme('boss'));
       btnThemeWaza.addEventListener('click', () => setStrobeTheme('waza'));
       btnThemeGold.addEventListener('click', () => setStrobeTheme('gold'));
-      btnInstGuitar.addEventListener('click', () => setInstrumentMode('guitar'));
-      btnInstChromatic.addEventListener('click', () => setInstrumentMode('chromatic'));
+      // Instrument pills attach their own listeners dynamically
       tuningSelect.addEventListener('change', (e) => {
         state.tuningKey = e.target.value;
         state.lockedStringIdx = null;
@@ -1153,7 +1365,7 @@
       });
 
       // Initialize
-      renderStringButtons();
+      setInstrumentMode('guitar');
       setDisplayMode('strobe');
       setStrobeStyle('multi');
       setStrobeSpeed(2);
