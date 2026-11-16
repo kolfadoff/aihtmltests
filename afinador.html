@@ -167,6 +167,21 @@
       border: 1px solid rgba(255, 255, 255, 0.09);
       box-shadow: 0 24px 50px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.08);
     }
+    .horizontal-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 0.875rem;
+    }
+    .is-horizontal .horizontal-grid {
+      grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+      align-items: start;
+    }
+    @media (orientation: landscape) and (min-width: 560px) {
+      .auto-landscape .horizontal-grid {
+        grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+        align-items: start;
+      }
+    }
     .display-window {
       background: radial-gradient(circle at 50% 35%, #111622 0%, #050608 100%);
       border: 2px solid #262a36;
@@ -207,28 +222,36 @@
   </style>
 </head>
 <body class="flex flex-col items-center justify-start px-3 py-4 sm:py-6">
-  <main class="w-full max-w-md flex flex-col gap-3">
+  <main id="appContainer" class="w-full max-w-md auto-landscape flex flex-col gap-3 transition-all">
     <!-- Top Header / Brand Badge -->
-    <header class="flex items-center justify-between px-1">
-      <div class="flex items-center gap-2">
-        <span class="inline-flex items-center justify-center px-2 py-0.5 rounded bg-sky-500/15 border border-sky-400/30 text-sky-300 text-xs font-extrabold tracking-widest uppercase">
+    <header class="flex items-center justify-between px-1 gap-2">
+      <div class="flex items-center gap-2 min-w-0">
+        <span class="inline-flex items-center justify-center px-2 py-0.5 rounded bg-sky-500/15 border border-sky-400/30 text-sky-300 text-xs font-extrabold tracking-widest uppercase shrink-0">
           TU-PRO
         </span>
-        <h1 class="text-sm sm:text-base font-bold tracking-tight text-slate-200">
-          Afinador Strobe Multi-Instrumentos
+        <h1 class="text-sm sm:text-base font-bold tracking-tight text-slate-200 truncate">
+          Afinador Strobe
         </h1>
       </div>
-      <div class="flex items-center gap-1.5">
-        <span id="statusDot" class="w-2.5 h-2.5 rounded-full bg-slate-600 transition-colors"></span>
-        <span id="statusText" class="text-xs font-medium text-slate-400">Standby</span>
+      <div class="flex items-center gap-2 shrink-0">
+        <button id="btnLayoutToggle" type="button" class="px-2 py-1 rounded-lg bg-[#0b0d12] border border-white/10 text-[11px] font-bold text-slate-300 hover:text-white hover:border-sky-400/50 transition-colors flex items-center gap-1">
+          <span>Horizontal</span>
+        </button>
+        <div class="flex items-center gap-1.5">
+          <span id="statusDot" class="w-2.5 h-2.5 rounded-full bg-slate-600 transition-colors"></span>
+          <span id="statusText" class="text-xs font-medium text-slate-400">Standby</span>
+        </div>
       </div>
     </header>
 
     <!-- Main Pedal Chassis -->
     <section class="pedal-chassis rounded-2xl p-3.5 sm:p-4 flex flex-col gap-3.5">
+      <div class="horizontal-grid">
+      <!-- Left Column in Horizontal Mode: Display + Strobe Options -->
+      <div class="flex flex-col gap-3">
       <!-- Display Mode & Instrument Switcher -->
       <div class="flex flex-col gap-2">
-        <div class="bg-[#0b0d12] p-1 rounded-xl border border-white/5 flex">
+        <div id="modeSwitcherBar" class="bg-[#0b0d12] p-1 rounded-xl border border-white/5 flex">
           <button id="btnModeCent" type="button" class="flex-1 py-2 px-2 rounded-lg text-xs font-bold tracking-wide transition-all text-slate-400 hover:text-slate-200">
             CENT (CLÁSSICO)
           </button>
@@ -255,6 +278,7 @@
           </div>
         </div>
 
+        <div id="strobeMeterBlock" class="flex flex-col gap-3">
         <!-- Main 21-Square BOSS LED Meter -->
         <div class="flex flex-col gap-1.5">
           <div class="flex items-center justify-between text-[11px] font-bold tracking-wider px-0.5">
@@ -286,6 +310,7 @@
           </div>
           <div id="fineGrid" class="fine-grid"></div>
         </div>
+        </div>
 
         <!-- Big Note Display & Accu-Pitch Arrows -->
         <div class="flex items-center justify-between pt-1 border-t border-white/5">
@@ -309,6 +334,29 @@
 
           <div class="flex items-center gap-2">
             <span id="arrowRight" class="text-2xl font-black text-slate-700 transition-colors">◀</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Choir Vocal Monitor & Pitch Timeline (Visible only in Coro Tenor mode) -->
+      <div id="vocalPanel" class="hidden flex-col gap-2.5 bg-[#0b0d12] rounded-xl p-3 border border-emerald-500/25">
+        <div class="flex items-center justify-between gap-2">
+          <div class="flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+            <span class="text-xs font-bold uppercase tracking-wider text-emerald-300">Linha do Tempo (Humming)</span>
+          </div>
+          <div class="flex items-center gap-1">
+            <button id="btnAccidental" type="button" class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-sky-300 border border-white/10 hover:border-sky-400/50" title="Alternar Sustenido / Bemol">♯ / ♭: ♭</button>
+            <button id="btnHummingSens" type="button" class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-400/40" title="Sensibilidade para humming baixo">Humming: Alto</button>
+          </div>
+        </div>
+        <div class="relative w-full h-44 bg-[#050609] rounded-lg border border-white/10 overflow-hidden">
+          <canvas id="pitchTimelineCanvas" class="w-full h-full block"></canvas>
+        </div>
+        <div class="flex items-center justify-between gap-2">
+          <span class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider shrink-0">Últimas notas:</span>
+          <div id="noteHistoryPills" class="flex items-center gap-1 overflow-x-auto text-[11px] mono">
+            <span class="text-slate-600">Aguardando voz...</span>
           </div>
         </div>
       </div>
@@ -339,6 +387,11 @@
         </div>
       </div>
 
+      </div>
+      <!-- Right Column in Horizontal Mode: Controls, Instrument & Mic -->
+      <div class="flex flex-col gap-3">
+
+
       <!-- Instrument Tuning Presets & String Selector (Hidden in Chromatic Mode) -->
       <div id="guitarSection" class="flex flex-col gap-2.5">
         <div class="flex items-center justify-between gap-2">
@@ -348,9 +401,9 @@
           <select id="tuningSelect" class="flex-1 bg-[#0b0d12] border border-white/10 rounded-lg px-2.5 py-2 text-xs font-semibold text-slate-200 focus:outline-none focus:border-sky-400"></select>
         </div>
 
-        <!-- Dynamic String Buttons (Tap to hear reference tone or lock string) -->
+        <!-- Dynamic String / Note Buttons (Tap to hear reference tone or lock target) -->
         <div id="stringButtons" class="grid grid-cols-6 gap-1.5"></div>
-        <p class="text-[11px] text-slate-500 text-center">
+        <p id="targetHint" class="text-[11px] text-slate-500 text-center">
           Toque numa corda para ouvir o tom de referência (ou travar/destravar o alvo).
         </p>
       </div>
@@ -403,17 +456,68 @@
           </div>
         </div>
       </div>
+      </div>
+      </div>
     </section>
   </main>
 
   <script>
     (function () {
-      const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+      const NOTE_NAMES_SHARP = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+      const NOTE_NAMES_FLAT = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
+      function getNoteName(idx) {
+        return state.preferFlats ? NOTE_NAMES_FLAT[idx] : NOTE_NAMES_SHARP[idx];
+      }
 
       const INSTRUMENTS = {
         chromatic: {
           name: 'Cromático',
           tunings: {}
+        },
+        choir_tenor: {
+          name: 'Coro (Tenor)',
+          isVocal: true,
+          tunings: {
+            tenor_mid: {
+              label: 'Tenor · Região Média (C3 – C4)',
+              strings: [
+                { label: 'C3', note: 'C', octave: 3, midi: 48 },
+                { label: 'D3', note: 'D', octave: 3, midi: 50 },
+                { label: 'E3', note: 'E', octave: 3, midi: 52 },
+                { label: 'F3', note: 'F', octave: 3, midi: 53 },
+                { label: 'G3', note: 'G', octave: 3, midi: 55 },
+                { label: 'A3', note: 'A', octave: 3, midi: 57 },
+                { label: 'B3', note: 'B', octave: 3, midi: 59 },
+                { label: 'C4', note: 'C', octave: 4, midi: 60 }
+              ]
+            },
+            tenor_high: {
+              label: 'Tenor · Agudos / Passagem (C4 – A4)',
+              strings: [
+                { label: 'C4', note: 'C', octave: 4, midi: 60 },
+                { label: 'D4', note: 'D', octave: 4, midi: 62 },
+                { label: 'E4', note: 'E', octave: 4, midi: 64 },
+                { label: 'F4', note: 'F', octave: 4, midi: 65 },
+                { label: 'F#4', note: 'F#', octave: 4, midi: 66 },
+                { label: 'G4', note: 'G', octave: 4, midi: 67 },
+                { label: 'G#4', note: 'G#', octave: 4, midi: 68 },
+                { label: 'A4', note: 'A', octave: 4, midi: 69 }
+              ]
+            },
+            tenor_arpeggio: {
+              label: 'Tenor · Aquecimento / Tríades (C3–C5)',
+              strings: [
+                { label: 'C3', note: 'C', octave: 3, midi: 48 },
+                { label: 'E3', note: 'E', octave: 3, midi: 52 },
+                { label: 'G3', note: 'G', octave: 3, midi: 55 },
+                { label: 'C4', note: 'C', octave: 4, midi: 60 },
+                { label: 'E4', note: 'E', octave: 4, midi: 64 },
+                { label: 'G4', note: 'G', octave: 4, midi: 67 },
+                { label: 'A4', note: 'A', octave: 4, midi: 69 },
+                { label: 'C5', note: 'C', octave: 5, midi: 72 }
+              ]
+            }
+          }
         },
         guitar: {
           name: 'Violão',
@@ -642,7 +746,13 @@
         strobeStyle: 'multi', // 'stream' | 'multi' | 'dual'
         strobeSpeed: 2, // 1 | 2 | 4
         strobeTheme: 'waza', // 'boss' | 'waza' | 'gold'
-        instrumentMode: 'guitar', // 'guitar' | 'chromatic'
+        instrumentMode: 'guitar',
+        isHorizontal: false,
+        preferFlats: true,
+        hummingHighSens: true,
+        pitchHistory: [], // { t, midiFloat, cents, noteLabel }
+        noteTrail: [], // last 6 distinct notes sung
+        lastTrailNote: '',
         tuningKey: 'standard',
         lockedStringIdx: null, // null = auto detect
         a4: 440,
@@ -675,6 +785,16 @@
       const btnThemeWaza = document.getElementById('btnThemeWaza');
       const btnThemeGold = document.getElementById('btnThemeGold');
       const fineGrid = document.getElementById('fineGrid');
+      const appContainer = document.getElementById('appContainer');
+      const btnLayoutToggle = document.getElementById('btnLayoutToggle');
+      const targetHint = document.getElementById('targetHint');
+      const modeSwitcherBar = document.getElementById('modeSwitcherBar');
+      const strobeMeterBlock = document.getElementById('strobeMeterBlock');
+      const vocalPanel = document.getElementById('vocalPanel');
+      const pitchTimelineCanvas = document.getElementById('pitchTimelineCanvas');
+      const btnAccidental = document.getElementById('btnAccidental');
+      const btnHummingSens = document.getElementById('btnHummingSens');
+      const noteHistoryPills = document.getElementById('noteHistoryPills');
       const btnModeCent = document.getElementById('btnModeCent');
       const btnModeStrobe = document.getElementById('btnModeStrobe');
       const instrumentPills = document.getElementById('instrumentPills');
@@ -848,8 +968,9 @@
         const strings = getCurrentStrings();
         stringButtons.innerHTML = '';
         if (strings.length === 0) return;
+        const cols = strings.length > 6 ? 4 : strings.length;
         stringButtons.className = 'grid gap-1.5';
-        stringButtons.style.gridTemplateColumns = `repeat(${strings.length}, minmax(0, 1fr))`;
+        stringButtons.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`;
         strings.forEach((s, idx) => {
           const isLocked = state.lockedStringIdx === idx;
           const btn = document.createElement('button');
@@ -881,12 +1002,17 @@
           rms += buf[i] * buf[i];
         }
         rms = Math.sqrt(rms / SIZE);
-        if (rms < 0.012) {
+
+        const inst = INSTRUMENTS[state.instrumentMode];
+        const isVocal = Boolean(inst && inst.isVocal);
+        const rmsThreshold = isVocal && state.hummingHighSens ? 0.0038 : 0.012;
+        if (rms < rmsThreshold) {
           return { freq: -1, rms };
         }
 
-        const minFreq = 27; // ~A0 (covers 5-string bass B0 & piano lowest notes)
-        const maxFreq = 1400; // covers violin/mandolin E5 & upper range
+        // Vocal mode narrows window to tenor/vocal range (90Hz-620Hz) to reject room rumble & high noise
+        const minFreq = isVocal ? 90 : 27;
+        const maxFreq = isVocal ? 620 : 1400;
         const minLag = Math.floor(sampleRate / maxFreq);
         const maxLag = Math.min(Math.floor(sampleRate / minFreq), Math.floor(SIZE / 2));
 
@@ -942,6 +1068,7 @@
       }
 
       function resolveTarget(freq) {
+        const inst = INSTRUMENTS[state.instrumentMode];
         if (state.instrumentMode !== 'chromatic') {
           const strings = getCurrentStrings();
           if (state.lockedStringIdx !== null) {
@@ -949,6 +1076,20 @@
             const targetFreq = midiToFreq(target.midi);
             const cents = 1200 * Math.log2(freq / targetFreq);
             return { note: target.note, octave: target.octave, targetFreq, cents };
+          }
+          if (inst && inst.isVocal) {
+            // Choir vocal mode tracks any note sung chromatically unless a reference note is locked
+            const midiFloat = freqToMidiFloat(freq);
+            const nearestMidi = Math.round(midiFloat);
+            const cents = (midiFloat - nearestMidi) * 100;
+            const noteIdx = ((nearestMidi % 12) + 12) % 12;
+            const octave = Math.floor(nearestMidi / 12) - 1;
+            return {
+              note: getNoteName(noteIdx),
+              octave,
+              targetFreq: midiToFreq(nearestMidi),
+              cents
+            };
           }
           // Auto-match closest string
           let best = strings[0];
@@ -977,11 +1118,103 @@
           const noteIdx = ((nearestMidi % 12) + 12) % 12;
           const octave = Math.floor(nearestMidi / 12) - 1;
           return {
-            note: NOTE_NAMES[noteIdx],
+            note: getNoteName(noteIdx),
             octave,
             targetFreq: midiToFreq(nearestMidi),
             cents
           };
+        }
+      }
+
+      function pushVocalHistory(nowMs, freq, cents, noteLabel) {
+        const midiFloat = freqToMidiFloat(freq);
+        state.pitchHistory.push({ t: nowMs, midiFloat, cents, noteLabel });
+        const cutoff = nowMs - 7000;
+        while (state.pitchHistory.length > 0 && state.pitchHistory[0].t < cutoff) {
+          state.pitchHistory.shift();
+        }
+        if (noteLabel && noteLabel !== state.lastTrailNote) {
+          state.lastTrailNote = noteLabel;
+          state.noteTrail.push({ label: noteLabel, inTune: Math.abs(cents) <= 12 });
+          if (state.noteTrail.length > 6) state.noteTrail.shift();
+          noteHistoryPills.innerHTML = state.noteTrail
+            .map(
+              (item) =>
+                `<span class="px-1.5 py-0.5 rounded font-bold ${
+                  item.inTune
+                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/30'
+                    : 'bg-slate-800 text-slate-300 border border-white/10'
+                }">${item.label}</span>`
+            )
+            .join('<span class="text-slate-600">→</span>');
+        }
+      }
+
+      function drawPitchTimeline(nowMs) {
+        if (!pitchTimelineCanvas || vocalPanel.classList.contains('hidden')) return;
+        const rect = pitchTimelineCanvas.getBoundingClientRect();
+        if (rect.width === 0 || rect.height === 0) return;
+        const dpr = window.devicePixelRatio || 1;
+        const w = Math.round(rect.width * dpr);
+        const h = Math.round(rect.height * dpr);
+        if (pitchTimelineCanvas.width !== w || pitchTimelineCanvas.height !== h) {
+          pitchTimelineCanvas.width = w;
+          pitchTimelineCanvas.height = h;
+        }
+        const ctx = pitchTimelineCanvas.getContext('2d');
+        ctx.clearRect(0, 0, w, h);
+
+        // Determine vertical MIDI window centered around recent vocal pitch (default C3-C4 = 48-60)
+        const recent = state.pitchHistory;
+        let centerMidi = 54;
+        if (recent.length > 0) {
+          centerMidi = Math.round(recent[recent.length - 1].midiFloat);
+        }
+        const minMidi = centerMidi - 4.5;
+        const maxMidi = centerMidi + 4.5;
+        const span = maxMidi - minMidi;
+
+        const midiToY = (m) => h - ((m - minMidi) / span) * h;
+
+        // Draw horizontal semitone lines & labels
+        ctx.font = `${Math.round(10 * dpr)}px "JetBrains Mono", monospace`;
+        ctx.textBaseline = 'middle';
+        for (let m = Math.ceil(minMidi); m <= Math.floor(maxMidi); m++) {
+          const y = midiToY(m);
+          const isCenter = m === centerMidi;
+          ctx.strokeStyle = isCenter ? 'rgba(56, 189, 248, 0.35)' : 'rgba(255, 255, 255, 0.06)';
+          ctx.lineWidth = isCenter ? 1.5 * dpr : 1 * dpr;
+          ctx.beginPath();
+          ctx.moveTo(32 * dpr, y);
+          ctx.lineTo(w, y);
+          ctx.stroke();
+
+          const noteIdx = ((m % 12) + 12) % 12;
+          const oct = Math.floor(m / 12) - 1;
+          ctx.fillStyle = isCenter ? '#38bdf8' : '#64748b';
+          ctx.fillText(`${getNoteName(noteIdx)}${oct}`, 4 * dpr, y);
+        }
+
+        // Draw pitch curve over last 7 seconds
+        const windowMs = 7000;
+        const startX = 34 * dpr;
+        const plotW = w - startX - 6 * dpr;
+        for (let i = 1; i < recent.length; i++) {
+          const p0 = recent[i - 1];
+          const p1 = recent[i];
+          if (p1.t - p0.t > 300) continue; // gap if paused
+          const x0 = startX + ((p0.t - (nowMs - windowMs)) / windowMs) * plotW;
+          const x1 = startX + ((p1.t - (nowMs - windowMs)) / windowMs) * plotW;
+          const y0 = midiToY(p0.midiFloat);
+          const y1 = midiToY(p1.midiFloat);
+          const absCents = Math.abs(p1.cents);
+          ctx.strokeStyle = absCents <= 12 ? '#00e676' : absCents <= 25 ? '#ffaa1d' : '#ff3344';
+          ctx.lineWidth = 2.5 * dpr;
+          ctx.lineCap = 'round';
+          ctx.beginPath();
+          ctx.moveTo(x0, y0);
+          ctx.lineTo(x1, y1);
+          ctx.stroke();
         }
       }
 
@@ -1169,7 +1402,11 @@
           noteNameEl.textContent = state.currentNote;
           noteOctaveEl.textContent = state.currentOctave;
           freqReadout.textContent = `${state.smoothedFreq.toFixed(2)} Hz`;
-          targetReadout.textContent = `Alvo: ${state.targetFreq.toFixed(2)} Hz`;
+          const isVocal = Boolean(INSTRUMENTS[state.instrumentMode] && INSTRUMENTS[state.instrumentMode].isVocal);
+          const cSign = state.smoothedCents > 0.05 ? '+' : '';
+          targetReadout.textContent = isVocal
+            ? `${cSign}${state.smoothedCents.toFixed(1)} ¢`
+            : `Alvo: ${state.targetFreq.toFixed(2)} Hz`;
           const sign = state.smoothedCents > 0.05 ? '+' : '';
           centsReadout.textContent = `${sign}${state.smoothedCents.toFixed(1)} ¢`;
         } else {
@@ -1180,6 +1417,13 @@
           centsReadout.textContent = '--.- ¢';
         }
 
+        const inst = INSTRUMENTS[state.instrumentMode];
+        if (inst && inst.isVocal) {
+          if (state.hasSignal && state.smoothedFreq > 0) {
+            pushVocalHistory(now, state.smoothedFreq, state.smoothedCents, `${state.currentNote}${state.currentOctave}`);
+          }
+          drawPitchTimeline(now);
+        }
         updateLEDs(state.smoothedCents, state.hasSignal, dt);
         rafId = requestAnimationFrame(loop);
       }
@@ -1237,10 +1481,18 @@
       }
 
       function syncStrobeVisualContainers() {
+        const isVocal = Boolean(INSTRUMENTS[state.instrumentMode] && INSTRUMENTS[state.instrumentMode].isVocal);
         const isMulti = state.displayMode === 'strobe' && state.strobeStyle === 'multi';
         ledGrid.classList.toggle('hidden', isMulti);
         strobeMatrix.classList.toggle('hidden', !isMulti);
-        strobeOptionsPanel.classList.toggle('hidden', state.displayMode !== 'strobe');
+        strobeMeterBlock.classList.toggle('hidden', isVocal);
+        modeSwitcherBar.classList.toggle('hidden', isVocal);
+        strobeOptionsPanel.classList.toggle('hidden', isVocal || state.displayMode !== 'strobe');
+        displayModeTag.textContent = isVocal
+          ? 'MODO: CORO TENOR'
+          : state.displayMode === 'cent'
+          ? 'MODO: CENT'
+          : 'MODO: STROBE';
       }
 
       function setStrobeStyle(style) {
@@ -1287,12 +1539,32 @@
         state.instrumentMode = inst;
         state.lockedStringIdx = null;
         renderInstrumentPills();
-        if (inst === 'chromatic') {
+        const isVocal = Boolean(INSTRUMENTS[inst] && INSTRUMENTS[inst].isVocal);
+        vocalPanel.classList.toggle('hidden', !isVocal);
+        vocalPanel.classList.toggle('flex', isVocal);
+        if (inst === 'chromatic' || isVocal) {
           guitarSection.classList.add('hidden');
         } else {
           guitarSection.classList.remove('hidden');
+          targetHint.textContent = 'Toque numa corda para ouvir o tom de referência (ou travar/destravar o alvo).';
           renderTuningSelect();
           renderStringButtons();
+        }
+        syncStrobeVisualContainers();
+      }
+
+      function toggleHorizontalLayout() {
+        state.isHorizontal = !state.isHorizontal;
+        if (state.isHorizontal) {
+          appContainer.classList.remove('max-w-md');
+          appContainer.classList.add('max-w-3xl', 'is-horizontal');
+          btnLayoutToggle.textContent = 'Vertical';
+          btnLayoutToggle.className = 'px-2 py-1 rounded-lg bg-sky-500 text-slate-950 text-[11px] font-bold transition-colors';
+        } else {
+          appContainer.classList.remove('max-w-3xl', 'is-horizontal');
+          appContainer.classList.add('max-w-md');
+          btnLayoutToggle.textContent = 'Horizontal';
+          btnLayoutToggle.className = 'px-2 py-1 rounded-lg bg-[#0b0d12] border border-white/10 text-[11px] font-bold text-slate-300 hover:text-white hover:border-sky-400/50 transition-colors';
         }
       }
 
@@ -1320,6 +1592,18 @@
       }
 
       // Event listeners
+      btnLayoutToggle.addEventListener('click', toggleHorizontalLayout);
+      btnAccidental.addEventListener('click', () => {
+        state.preferFlats = !state.preferFlats;
+        btnAccidental.textContent = state.preferFlats ? '♯ / ♭: ♭' : '♯ / ♭: ♯';
+      });
+      btnHummingSens.addEventListener('click', () => {
+        state.hummingHighSens = !state.hummingHighSens;
+        btnHummingSens.textContent = state.hummingHighSens ? 'Humming: Alto' : 'Humming: Normal';
+        btnHummingSens.className = state.hummingHighSens
+          ? 'px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-400/40'
+          : 'px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-300 border border-white/10';
+      });
       btnModeCent.addEventListener('click', () => setDisplayMode('cent'));
       btnModeStrobe.addEventListener('click', () => setDisplayMode('strobe'));
       btnStrobeStream.addEventListener('click', () => setStrobeStyle('stream'));
