@@ -1,1 +1,1168 @@
 
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>BOSS Chromatic &amp; Guitar Tuner</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg-chassis: #12141a;
+      --bg-panel: #090a0e;
+      --bg-bezel: #1c1f29;
+      --led-off: #1b1e26;
+      --led-red: #ff3344;
+      --led-amber: #ffaa1d;
+      --led-green: #00e676;
+      --led-blue: #29b6f6;
+    }
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: radial-gradient(circle at top, #1d212b 0%, #0b0c10 70%);
+      color: #f1f5f9;
+      min-height: 100vh;
+      margin: 0;
+      overflow-x: hidden;
+    }
+    .mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    /* BOSS-style LED square segments */
+    .led-grid {
+      display: grid;
+      grid-template-columns: repeat(21, minmax(0, 1fr));
+      gap: 3px;
+      align-items: center;
+    }
+    @media (min-width: 480px) {
+      .led-grid {
+        gap: 5px;
+      }
+    }
+    .led-sq {
+      aspect-ratio: 1 / 1.35;
+      border-radius: 3px;
+      background: var(--led-off);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      transition: background-color 0.05s ease, box-shadow 0.05s ease, transform 0.05s ease;
+    }
+    .led-sq.center-sq {
+      aspect-ratio: 1 / 1.65;
+      border-radius: 4px;
+      border-color: rgba(255, 255, 255, 0.14);
+    }
+    .led-sq.on-red {
+      background: var(--led-red);
+      box-shadow: 0 0 10px rgba(255, 51, 68, 0.85), inset 0 0 4px rgba(255, 255, 255, 0.5);
+      border-color: #ff7782;
+    }
+    .led-sq.on-amber {
+      background: var(--led-amber);
+      box-shadow: 0 0 10px rgba(255, 170, 29, 0.8), inset 0 0 4px rgba(255, 255, 255, 0.5);
+      border-color: #ffd17a;
+    }
+    .led-sq.on-green {
+      background: var(--led-green);
+      box-shadow: 0 0 14px rgba(0, 230, 118, 0.95), inset 0 0 5px rgba(255, 255, 255, 0.65);
+      border-color: #9effc8;
+      transform: scaleY(1.06);
+    }
+    .led-sq.on-blue {
+      background: var(--led-blue);
+      box-shadow: 0 0 12px rgba(41, 182, 246, 0.9), inset 0 0 4px rgba(255, 255, 255, 0.6);
+      border-color: #9ce0ff;
+    }
+    .led-sq.on-gold {
+      background: #ffca28;
+      box-shadow: 0 0 12px rgba(255, 202, 40, 0.9), inset 0 0 4px rgba(255, 255, 255, 0.65);
+      border-color: #ffe999;
+    }
+
+    /* Multi-band 4-row strobe matrix (Peterson / Piano Strobe style) */
+    .strobe-matrix {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .strobe-row {
+      display: grid;
+      grid-template-columns: repeat(21, minmax(0, 1fr));
+      gap: 3px;
+      align-items: center;
+    }
+    @media (min-width: 480px) {
+      .strobe-row {
+        gap: 5px;
+      }
+    }
+    .strobe-cell {
+      height: 11px;
+      border-radius: 2px;
+      background: var(--led-off);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      transition: background-color 0.04s linear, box-shadow 0.04s linear;
+    }
+    .strobe-cell.on-blue {
+      background: var(--led-blue);
+      box-shadow: 0 0 9px rgba(41, 182, 246, 0.85);
+      border-color: #9ce0ff;
+    }
+    .strobe-cell.on-amber {
+      background: var(--led-amber);
+      box-shadow: 0 0 9px rgba(255, 170, 29, 0.85);
+      border-color: #ffd17a;
+    }
+    .strobe-cell.on-red {
+      background: var(--led-red);
+      box-shadow: 0 0 9px rgba(255, 51, 68, 0.85);
+      border-color: #ff7782;
+    }
+    .strobe-cell.on-green {
+      background: var(--led-green);
+      box-shadow: 0 0 11px rgba(0, 230, 118, 0.9);
+      border-color: #9effc8;
+    }
+    .strobe-cell.on-gold {
+      background: #ffca28;
+      box-shadow: 0 0 9px rgba(255, 202, 40, 0.85);
+      border-color: #ffe999;
+    }
+
+    /* Fine 11-LED piano/precision bar */
+    .fine-grid {
+      display: grid;
+      grid-template-columns: repeat(11, minmax(0, 1fr));
+      gap: 4px;
+    }
+    .fine-sq {
+      height: 8px;
+      border-radius: 2px;
+      background: #171922;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      transition: background-color 0.06s ease, box-shadow 0.06s ease;
+    }
+    .fine-sq.on-green {
+      background: var(--led-green);
+      box-shadow: 0 0 8px rgba(0, 230, 118, 0.85);
+    }
+    .fine-sq.on-blue {
+      background: var(--led-blue);
+      box-shadow: 0 0 8px rgba(41, 182, 246, 0.85);
+    }
+    .fine-sq.on-amber {
+      background: var(--led-amber);
+      box-shadow: 0 0 8px rgba(255, 170, 29, 0.8);
+    }
+
+    /* Pedal chassis & 7-segment feel */
+    .pedal-chassis {
+      background: linear-gradient(180deg, #1a1d26 0%, #111319 100%);
+      border: 1px solid rgba(255, 255, 255, 0.09);
+      box-shadow: 0 24px 50px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    }
+    .display-window {
+      background: radial-gradient(circle at 50% 35%, #111622 0%, #050608 100%);
+      border: 2px solid #262a36;
+      box-shadow: inset 0 4px 20px rgba(0, 0, 0, 0.9);
+    }
+    .note-glow-in-tune {
+      color: #00e676;
+      text-shadow: 0 0 24px rgba(0, 230, 118, 0.55);
+    }
+    .note-glow-active {
+      color: #f8fafc;
+      text-shadow: 0 0 18px rgba(56, 189, 248, 0.35);
+    }
+    .note-glow-idle {
+      color: #334155;
+    }
+
+    /* Range slider styling */
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      background: #1e222d;
+      height: 6px;
+      border-radius: 999px;
+      outline: none;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #38bdf8;
+      cursor: pointer;
+      border: 2px solid #0f172a;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.6);
+    }
+  </style>
+</head>
+<body class="flex flex-col items-center justify-start px-3 py-4 sm:py-6">
+  <main class="w-full max-w-md flex flex-col gap-3">
+    <!-- Top Header / Brand Badge -->
+    <header class="flex items-center justify-between px-1">
+      <div class="flex items-center gap-2">
+        <span class="inline-flex items-center justify-center px-2 py-0.5 rounded bg-sky-500/15 border border-sky-400/30 text-sky-300 text-xs font-extrabold tracking-widest uppercase">
+          TU-PRO
+        </span>
+        <h1 class="text-sm sm:text-base font-bold tracking-tight text-slate-200">
+          Afinador Cromático &amp; Violão
+        </h1>
+      </div>
+      <div class="flex items-center gap-1.5">
+        <span id="statusDot" class="w-2.5 h-2.5 rounded-full bg-slate-600 transition-colors"></span>
+        <span id="statusText" class="text-xs font-medium text-slate-400">Standby</span>
+      </div>
+    </header>
+
+    <!-- Main Pedal Chassis -->
+    <section class="pedal-chassis rounded-2xl p-3.5 sm:p-4 flex flex-col gap-3.5">
+      <!-- Mode & Instrument Switcher -->
+      <div class="grid grid-cols-2 gap-2">
+        <div class="bg-[#0b0d12] p-1 rounded-xl border border-white/5 flex">
+          <button id="btnModeCent" type="button" class="flex-1 py-2 px-2 rounded-lg text-xs font-bold tracking-wide transition-all bg-sky-500 text-slate-950 shadow">
+            CENT
+          </button>
+          <button id="btnModeStrobe" type="button" class="flex-1 py-2 px-2 rounded-lg text-xs font-bold tracking-wide transition-all text-slate-400 hover:text-slate-200">
+            STROBE
+          </button>
+        </div>
+        <div class="bg-[#0b0d12] p-1 rounded-xl border border-white/5 flex">
+          <button id="btnInstGuitar" type="button" class="flex-1 py-2 px-2 rounded-lg text-xs font-bold tracking-wide transition-all bg-emerald-500 text-slate-950 shadow">
+            VIOLÃO
+          </button>
+          <button id="btnInstChromatic" type="button" class="flex-1 py-2 px-2 rounded-lg text-xs font-bold tracking-wide transition-all text-slate-400 hover:text-slate-200">
+            PIANO / CROM
+          </button>
+        </div>
+      </div>
+
+      <!-- BOSS LED Display Window -->
+      <div class="display-window rounded-xl p-3.5 sm:p-4 flex flex-col gap-3 relative overflow-hidden">
+        <!-- Top Telemetry Row -->
+        <div class="flex items-center justify-between text-[11px] mono text-slate-400">
+          <div class="flex items-center gap-2">
+            <span class="px-1.5 py-0.5 rounded bg-white/5 text-slate-300 font-semibold" id="displayModeTag">MODO: CENT</span>
+            <span id="displayRefTag">A4 = 440Hz</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <span class="text-slate-500">SINAL</span>
+            <div class="w-12 h-2 bg-slate-900 rounded-full overflow-hidden border border-white/10">
+              <div id="signalBar" class="h-full bg-emerald-400 w-0 transition-all duration-75"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Main 21-Square BOSS LED Meter -->
+        <div class="flex flex-col gap-1.5">
+          <div class="flex items-center justify-between text-[11px] font-bold tracking-wider px-0.5">
+            <span class="text-rose-400">♭ BAIXO</span>
+            <span id="inTuneBadge" class="px-2 py-0.5 rounded-full text-[10px] font-extrabold tracking-widest uppercase bg-slate-800/80 text-slate-500 border border-white/5 transition-all">
+              AFINADO
+            </span>
+            <span class="text-amber-400">ALTO ♯</span>
+          </div>
+
+          <!-- Center Marker Arrows -->
+          <div class="grid grid-cols-21 items-center text-center leading-none text-[10px] text-slate-500" style="display:grid;grid-template-columns:repeat(21,minmax(0,1fr));">
+            <span class="col-span-10 text-right pr-1 text-slate-600">-50¢</span>
+            <span id="centerArrow" class="text-slate-500 font-bold transition-colors">▼</span>
+            <span class="col-span-10 text-left pl-1 text-slate-600">+50¢</span>
+          </div>
+
+          <!-- 21 LED Squares -->
+          <div id="ledGrid" class="led-grid" aria-label="Medidor de quadradinhos LED"></div>
+          <!-- 4-Band Peterson/Piano Strobe Matrix (shown in Multibanda mode) -->
+          <div id="strobeMatrix" class="strobe-matrix hidden" aria-label="Matriz Strobe Multi-Banda"></div>
+        </div>
+
+        <!-- Fine Piano-Precision Sub-Meter (±10 cents) -->
+        <div class="flex flex-col gap-1 pt-0.5">
+          <div class="flex items-center justify-between text-[10px] mono text-slate-500">
+            <span>FINO ±10¢</span>
+            <span id="centsReadout" class="text-xs font-bold text-slate-300">--.- ¢</span>
+          </div>
+          <div id="fineGrid" class="fine-grid"></div>
+        </div>
+
+        <!-- Big Note Display & Accu-Pitch Arrows -->
+        <div class="flex items-center justify-between pt-1 border-t border-white/5">
+          <div class="flex items-center gap-2">
+            <span id="arrowLeft" class="text-2xl font-black text-slate-700 transition-colors">▶</span>
+          </div>
+
+          <div class="flex flex-col items-center">
+            <div class="flex items-baseline gap-1">
+              <span id="noteName" class="mono text-6xl sm:text-7xl font-extrabold tracking-tighter note-glow-idle transition-colors">
+                --
+              </span>
+              <span id="noteOctave" class="mono text-2xl font-bold text-slate-500"></span>
+            </div>
+            <div class="flex items-center gap-2 mt-0.5">
+              <span id="freqReadout" class="mono text-xs text-slate-400">0.00 Hz</span>
+              <span class="text-slate-700">•</span>
+              <span id="targetReadout" class="mono text-xs text-sky-400/80">Alvo: --</span>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <span id="arrowRight" class="text-2xl font-black text-slate-700 transition-colors">◀</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Strobe Options Panel (Visible in STROBE Mode) -->
+      <div id="strobeOptionsPanel" class="bg-[#0b0d12] rounded-xl p-2.5 border border-sky-500/20 flex flex-col gap-2">
+        <div class="flex items-center justify-between gap-2">
+          <span class="text-[11px] font-bold uppercase tracking-wider text-sky-300">Estilo Strobe</span>
+          <div class="flex gap-1 flex-1 justify-end">
+            <button id="btnStrobeStream" type="button" class="px-2 py-1 rounded-md text-[11px] font-bold bg-sky-500 text-slate-950 transition-colors">BOSS Stream</button>
+            <button id="btnStrobeMulti" type="button" class="px-2 py-1 rounded-md text-[11px] font-bold bg-slate-800 text-slate-300 hover:text-white transition-colors">4 Faixas</button>
+            <button id="btnStrobeDual" type="button" class="px-2 py-1 rounded-md text-[11px] font-bold bg-slate-800 text-slate-300 hover:text-white transition-colors">Espelhado</button>
+          </div>
+        </div>
+        <div class="flex items-center justify-between gap-2 pt-1.5 border-t border-white/5">
+          <div class="flex items-center gap-1">
+            <span class="text-[10px] font-semibold text-slate-400 mr-1">Velocidade:</span>
+            <button id="btnSpeed1x" type="button" class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-300">1x</button>
+            <button id="btnSpeed2x" type="button" class="px-2 py-0.5 rounded text-[10px] font-bold bg-sky-500/25 text-sky-300 border border-sky-400/40">2x</button>
+            <button id="btnSpeed4x" type="button" class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-300">4x</button>
+          </div>
+          <div class="flex items-center gap-1">
+            <span class="text-[10px] font-semibold text-slate-400 mr-1">Cor:</span>
+            <button id="btnThemeBoss" type="button" class="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/25 text-rose-300 border border-rose-400/40">BOSS</button>
+            <button id="btnThemeWaza" type="button" class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-300">Waza</button>
+            <button id="btnThemeGold" type="button" class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-300">Âmbar</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Guitar Tuning Presets & String Selector (Visible in Guitar Mode) -->
+      <div id="guitarSection" class="flex flex-col gap-2.5">
+        <div class="flex items-center justify-between gap-2">
+          <label for="tuningSelect" class="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+            Afinação
+          </label>
+          <select id="tuningSelect" class="flex-1 bg-[#0b0d12] border border-white/10 rounded-lg px-2.5 py-2 text-xs font-semibold text-slate-200 focus:outline-none focus:border-sky-400">
+            <option value="standard">Padrão (E A D G B E)</option>
+            <option value="dropd">Drop D (D A D G B E)</option>
+            <option value="halfstep">Meio Tom Abaixo (Eb Ab Db Gb Bb Eb)</option>
+            <option value="openg">Open G (D G D G B D)</option>
+            <option value="dadgad">DADGAD (D A D G A D)</option>
+          </select>
+        </div>
+
+        <!-- 6 String Buttons (Tap to hear reference tone or lock string) -->
+        <div id="stringButtons" class="grid grid-cols-6 gap-1.5"></div>
+        <p class="text-[11px] text-slate-500 text-center">
+          Toque numa corda para ouvir o tom de referência (ou travar/destravar o alvo).
+        </p>
+      </div>
+
+      <!-- Primary Microphone Button -->
+      <button id="btnMic" type="button" class="w-full py-3.5 px-4 rounded-xl font-bold text-sm tracking-wide flex items-center justify-center gap-2.5 transition-all bg-sky-500 hover:bg-sky-400 active:scale-[0.99] text-slate-950 shadow-lg shadow-sky-500/20">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+          <path stroke-linecap="round" stroke-linejoin="round" d="M19 10v2a7 7 0 0 1-14 0v-2" />
+          <line x1="12" y1="19" x2="12" y2="23" />
+          <line x1="8" y1="23" x2="16" y2="23" />
+        </svg>
+        <span id="btnMicLabel">Ligar Microfone</span>
+      </button>
+
+      <!-- Inline Error / Permission Notice -->
+      <div id="errorBanner" class="hidden rounded-lg bg-rose-500/10 border border-rose-500/30 px-3 py-2 text-xs text-rose-300"></div>
+
+      <!-- Calibration & Interactive Simulator Drawer -->
+      <div class="bg-[#0b0d12] rounded-xl p-3 border border-white/5 flex flex-col gap-3">
+        <!-- A4 Calibration -->
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold text-slate-300">Calibração A4 (Lá)</span>
+          <div class="flex items-center gap-2">
+            <button id="btnA4Down" type="button" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-sm flex items-center justify-center">-</button>
+            <span id="a4Value" class="mono text-xs font-bold text-sky-300 w-14 text-center">440 Hz</span>
+            <button id="btnA4Up" type="button" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-sm flex items-center justify-center">+</button>
+          </div>
+        </div>
+
+        <!-- Interactive Test / Demo Simulator -->
+        <div class="pt-2 border-t border-white/5 flex flex-col gap-2">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold text-slate-300">Simulador Visual (Testar sem Mic)</span>
+            <button id="btnSimToggle" type="button" class="px-2.5 py-1 rounded-md text-[11px] font-bold bg-slate-800 text-slate-300 hover:bg-slate-700 transition-colors">
+              Ativar Demo
+            </button>
+          </div>
+          <div id="simControls" class="hidden flex-col gap-2">
+            <div class="flex items-center justify-between text-[11px] mono text-slate-400">
+              <span>Desvio Simulado:</span>
+              <span id="simCentsLabel" class="text-sky-300 font-bold">0.0 ¢</span>
+            </div>
+            <input id="simSlider" type="range" min="-50" max="50" step="0.5" value="-18" class="w-full" />
+            <div class="flex justify-between text-[10px] text-slate-500">
+              <span>-50¢ (Frouxa)</span>
+              <button id="btnSimZero" type="button" class="text-emerald-400 font-semibold hover:underline">Cravar 0¢</button>
+              <span>+50¢ (Apertada)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    (function () {
+      const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+
+      const TUNINGS = {
+        standard: [
+          { label: '6E', note: 'E', octave: 2, midi: 40 },
+          { label: '5A', note: 'A', octave: 2, midi: 45 },
+          { label: '4D', note: 'D', octave: 3, midi: 50 },
+          { label: '3G', note: 'G', octave: 3, midi: 55 },
+          { label: '2B', note: 'B', octave: 3, midi: 59 },
+          { label: '1E', note: 'E', octave: 4, midi: 64 }
+        ],
+        dropd: [
+          { label: '6D', note: 'D', octave: 2, midi: 38 },
+          { label: '5A', note: 'A', octave: 2, midi: 45 },
+          { label: '4D', note: 'D', octave: 3, midi: 50 },
+          { label: '3G', note: 'G', octave: 3, midi: 55 },
+          { label: '2B', note: 'B', octave: 3, midi: 59 },
+          { label: '1E', note: 'E', octave: 4, midi: 64 }
+        ],
+        halfstep: [
+          { label: '6Eb', note: 'D#', octave: 2, midi: 39 },
+          { label: '5Ab', note: 'G#', octave: 2, midi: 44 },
+          { label: '4Db', note: 'C#', octave: 3, midi: 49 },
+          { label: '3Gb', note: 'F#', octave: 3, midi: 54 },
+          { label: '2Bb', note: 'A#', octave: 3, midi: 58 },
+          { label: '1Eb', note: 'D#', octave: 4, midi: 63 }
+        ],
+        openg: [
+          { label: '6D', note: 'D', octave: 2, midi: 38 },
+          { label: '5G', note: 'G', octave: 2, midi: 43 },
+          { label: '4D', note: 'D', octave: 3, midi: 50 },
+          { label: '3G', note: 'G', octave: 3, midi: 55 },
+          { label: '2B', note: 'B', octave: 3, midi: 59 },
+          { label: '1D', note: 'D', octave: 4, midi: 62 }
+        ],
+        dadgad: [
+          { label: '6D', note: 'D', octave: 2, midi: 38 },
+          { label: '5A', note: 'A', octave: 2, midi: 45 },
+          { label: '4D', note: 'D', octave: 3, midi: 50 },
+          { label: '3G', note: 'G', octave: 3, midi: 55 },
+          { label: '2A', note: 'A', octave: 3, midi: 57 },
+          { label: '1D', note: 'D', octave: 4, midi: 62 }
+        ]
+      };
+
+      const state = {
+        displayMode: 'strobe', // 'cent' | 'strobe'
+        strobeStyle: 'multi', // 'stream' | 'multi' | 'dual'
+        strobeSpeed: 2, // 1 | 2 | 4
+        strobeTheme: 'waza', // 'boss' | 'waza' | 'gold'
+        instrumentMode: 'guitar', // 'guitar' | 'chromatic'
+        tuningKey: 'standard',
+        lockedStringIdx: null, // null = auto detect
+        a4: 440,
+        micActive: false,
+        simActive: false,
+        simCents: -18,
+        strobePhase: 0,
+        lastFrameTime: performance.now(),
+        smoothedCents: 0,
+        smoothedFreq: 0,
+        hasSignal: false,
+        signalLevel: 0,
+        currentNote: '--',
+        currentOctave: '',
+        targetFreq: 0,
+        accuPitchPulse: 0
+      };
+
+      // DOM elements
+      const ledGrid = document.getElementById('ledGrid');
+      const strobeMatrix = document.getElementById('strobeMatrix');
+      const strobeOptionsPanel = document.getElementById('strobeOptionsPanel');
+      const btnStrobeStream = document.getElementById('btnStrobeStream');
+      const btnStrobeMulti = document.getElementById('btnStrobeMulti');
+      const btnStrobeDual = document.getElementById('btnStrobeDual');
+      const btnSpeed1x = document.getElementById('btnSpeed1x');
+      const btnSpeed2x = document.getElementById('btnSpeed2x');
+      const btnSpeed4x = document.getElementById('btnSpeed4x');
+      const btnThemeBoss = document.getElementById('btnThemeBoss');
+      const btnThemeWaza = document.getElementById('btnThemeWaza');
+      const btnThemeGold = document.getElementById('btnThemeGold');
+      const fineGrid = document.getElementById('fineGrid');
+      const btnModeCent = document.getElementById('btnModeCent');
+      const btnModeStrobe = document.getElementById('btnModeStrobe');
+      const btnInstGuitar = document.getElementById('btnInstGuitar');
+      const btnInstChromatic = document.getElementById('btnInstChromatic');
+      const displayModeTag = document.getElementById('displayModeTag');
+      const displayRefTag = document.getElementById('displayRefTag');
+      const signalBar = document.getElementById('signalBar');
+      const inTuneBadge = document.getElementById('inTuneBadge');
+      const centerArrow = document.getElementById('centerArrow');
+      const centsReadout = document.getElementById('centsReadout');
+      const noteNameEl = document.getElementById('noteName');
+      const noteOctaveEl = document.getElementById('noteOctave');
+      const freqReadout = document.getElementById('freqReadout');
+      const targetReadout = document.getElementById('targetReadout');
+      const arrowLeft = document.getElementById('arrowLeft');
+      const arrowRight = document.getElementById('arrowRight');
+      const guitarSection = document.getElementById('guitarSection');
+      const tuningSelect = document.getElementById('tuningSelect');
+      const stringButtons = document.getElementById('stringButtons');
+      const btnMic = document.getElementById('btnMic');
+      const btnMicLabel = document.getElementById('btnMicLabel');
+      const statusDot = document.getElementById('statusDot');
+      const statusText = document.getElementById('statusText');
+      const errorBanner = document.getElementById('errorBanner');
+      const btnA4Down = document.getElementById('btnA4Down');
+      const btnA4Up = document.getElementById('btnA4Up');
+      const a4Value = document.getElementById('a4Value');
+      const btnSimToggle = document.getElementById('btnSimToggle');
+      const simControls = document.getElementById('simControls');
+      const simSlider = document.getElementById('simSlider');
+      const simCentsLabel = document.getElementById('simCentsLabel');
+      const btnSimZero = document.getElementById('btnSimZero');
+
+      // Build 21 LED squares
+      const ledSquares = [];
+      for (let i = 0; i < 21; i++) {
+        const sq = document.createElement('div');
+        sq.className = 'led-sq' + (i === 10 ? ' center-sq' : '');
+        ledGrid.appendChild(sq);
+        ledSquares.push(sq);
+      }
+
+      // Build 4-band x 21-column Strobe Matrix
+      const strobeRows = [];
+      for (let r = 0; r < 4; r++) {
+        const rowEl = document.createElement('div');
+        rowEl.className = 'strobe-row';
+        const cells = [];
+        for (let c = 0; c < 21; c++) {
+          const cell = document.createElement('div');
+          cell.className = 'strobe-cell';
+          rowEl.appendChild(cell);
+          cells.push(cell);
+        }
+        strobeMatrix.appendChild(rowEl);
+        strobeRows.push(cells);
+      }
+
+      // Build 11 Fine LED squares
+      const fineSquares = [];
+      for (let i = 0; i < 11; i++) {
+        const sq = document.createElement('div');
+        sq.className = 'fine-sq';
+        fineGrid.appendChild(sq);
+        fineSquares.push(sq);
+      }
+
+      // Audio context & microphone nodes
+      let audioCtx = null;
+      let analyser = null;
+      let micStream = null;
+      let audioBuffer = null;
+      let rafId = null;
+
+      function ensureAudioContext() {
+        if (!audioCtx) {
+          const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+          audioCtx = new AudioContextClass();
+        }
+        if (audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+      }
+
+      function midiToFreq(midi) {
+        return state.a4 * Math.pow(2, (midi - 69) / 12);
+      }
+
+      function freqToMidiFloat(freq) {
+        return 69 + 12 * Math.log2(freq / state.a4);
+      }
+
+      // Synthesize a clean plucked reference tone
+      function playReferenceTone(freq) {
+        try {
+          ensureAudioContext();
+          const now = audioCtx.currentTime;
+          const osc1 = audioCtx.createOscillator();
+          const osc2 = audioCtx.createOscillator();
+          const filter = audioCtx.createBiquadFilter();
+          const gain = audioCtx.createGain();
+
+          osc1.type = 'triangle';
+          osc1.frequency.setValueAtTime(freq, now);
+          osc2.type = 'sine';
+          osc2.frequency.setValueAtTime(freq * 2, now);
+
+          filter.type = 'lowpass';
+          filter.frequency.setValueAtTime(Math.min(freq * 6, 4000), now);
+          filter.frequency.exponentialRampToValueAtTime(Math.max(freq * 1.5, 250), now + 1.4);
+
+          gain.gain.setValueAtTime(0.001, now);
+          gain.gain.linearRampToValueAtTime(0.28, now + 0.015);
+          gain.gain.exponentialRampToValueAtTime(0.0008, now + 1.6);
+
+          osc1.connect(filter);
+          osc2.connect(filter);
+          filter.connect(gain);
+          gain.connect(audioCtx.destination);
+
+          osc1.start(now);
+          osc2.start(now);
+          osc1.stop(now + 1.65);
+          osc2.stop(now + 1.65);
+        } catch (e) {
+          // Ignore audio playback errors
+        }
+      }
+
+      function renderStringButtons() {
+        const strings = TUNINGS[state.tuningKey];
+        stringButtons.innerHTML = '';
+        strings.forEach((s, idx) => {
+          const isLocked = state.lockedStringIdx === idx;
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className =
+            'py-2.5 px-1 rounded-xl border text-center transition-all flex flex-col items-center justify-center gap-0.5 ' +
+            (isLocked
+              ? 'bg-emerald-500/20 border-emerald-400 text-emerald-300 shadow shadow-emerald-500/20'
+              : 'bg-[#0b0d12] border-white/10 text-slate-300 hover:border-sky-400/50 hover:text-white');
+          btn.innerHTML = `<span class="mono text-xs font-extrabold">${s.label}</span><span class="text-[9px] text-slate-500">${Math.round(midiToFreq(s.midi))}Hz</span>`;
+          btn.addEventListener('click', () => {
+            if (state.lockedStringIdx === idx) {
+              state.lockedStringIdx = null;
+            } else {
+              state.lockedStringIdx = idx;
+            }
+            playReferenceTone(midiToFreq(s.midi));
+            renderStringButtons();
+          });
+          stringButtons.appendChild(btn);
+        });
+      }
+
+      // YIN-inspired autocorrelation pitch detection
+      function detectPitch(buf, sampleRate) {
+        const SIZE = buf.length;
+        let rms = 0;
+        for (let i = 0; i < SIZE; i++) {
+          rms += buf[i] * buf[i];
+        }
+        rms = Math.sqrt(rms / SIZE);
+        if (rms < 0.012) {
+          return { freq: -1, rms };
+        }
+
+        const minFreq = 55; // ~A1 (covers drop tunings)
+        const maxFreq = 1200; // covers guitar & upper piano range
+        const minLag = Math.floor(sampleRate / maxFreq);
+        const maxLag = Math.min(Math.floor(sampleRate / minFreq), Math.floor(SIZE / 2));
+
+        const diff = new Float32Array(maxLag + 1);
+        for (let tau = 1; tau <= maxLag; tau++) {
+          let sum = 0;
+          for (let i = 0; i < SIZE - maxLag; i++) {
+            const d = buf[i] - buf[i + tau];
+            sum += d * d;
+          }
+          diff[tau] = sum;
+        }
+
+        // Cumulative mean normalized difference (CMNDF)
+        const cmndf = new Float32Array(maxLag + 1);
+        cmndf[0] = 1;
+        let runningSum = 0;
+        for (let tau = 1; tau <= maxLag; tau++) {
+          runningSum += diff[tau];
+          cmndf[tau] = runningSum > 0 ? (diff[tau] * tau) / runningSum : 1;
+        }
+
+        // Find first valley below threshold
+        const threshold = 0.16;
+        let tauEstimate = -1;
+        for (let tau = minLag; tau < maxLag; tau++) {
+          if (cmndf[tau] < threshold) {
+            while (tau + 1 < maxLag && cmndf[tau + 1] < cmndf[tau]) {
+              tau++;
+            }
+            tauEstimate = tau;
+            break;
+          }
+        }
+
+        if (tauEstimate === -1) {
+          return { freq: -1, rms };
+        }
+
+        // Parabolic interpolation for sub-sample precision
+        let betterTau = tauEstimate;
+        if (tauEstimate > 1 && tauEstimate < maxLag - 1) {
+          const s0 = cmndf[tauEstimate - 1];
+          const s1 = cmndf[tauEstimate];
+          const s2 = cmndf[tauEstimate + 1];
+          const denom = 2 * (2 * s1 - s2 - s0);
+          if (Math.abs(denom) > 1e-6) {
+            betterTau = tauEstimate + (s2 - s0) / denom;
+          }
+        }
+
+        return { freq: sampleRate / betterTau, rms };
+      }
+
+      function resolveTarget(freq) {
+        if (state.instrumentMode === 'guitar') {
+          const strings = TUNINGS[state.tuningKey];
+          if (state.lockedStringIdx !== null) {
+            const target = strings[state.lockedStringIdx];
+            const targetFreq = midiToFreq(target.midi);
+            const cents = 1200 * Math.log2(freq / targetFreq);
+            return { note: target.note, octave: target.octave, targetFreq, cents };
+          }
+          // Auto-match closest string
+          let best = strings[0];
+          let minAbsCents = Infinity;
+          let bestCents = 0;
+          for (const s of strings) {
+            const tf = midiToFreq(s.midi);
+            const c = 1200 * Math.log2(freq / tf);
+            if (Math.abs(c) < minAbsCents) {
+              minAbsCents = Math.abs(c);
+              best = s;
+              bestCents = c;
+            }
+          }
+          return {
+            note: best.note,
+            octave: best.octave,
+            targetFreq: midiToFreq(best.midi),
+            cents: bestCents
+          };
+        } else {
+          // Chromatic (Piano mode)
+          const midiFloat = freqToMidiFloat(freq);
+          const nearestMidi = Math.round(midiFloat);
+          const cents = (midiFloat - nearestMidi) * 100;
+          const noteIdx = ((nearestMidi % 12) + 12) % 12;
+          const octave = Math.floor(nearestMidi / 12) - 1;
+          return {
+            note: NOTE_NAMES[noteIdx],
+            octave,
+            targetFreq: midiToFreq(nearestMidi),
+            cents
+          };
+        }
+      }
+
+      function updateLEDs(cents, hasSignal, dt) {
+        // Clear all LEDs
+        for (let i = 0; i < 21; i++) {
+          ledSquares[i].className = 'led-sq' + (i === 10 ? ' center-sq' : '');
+        }
+        for (let r = 0; r < 4; r++) {
+          for (let c = 0; c < 21; c++) {
+            strobeRows[r][c].className = 'strobe-cell';
+          }
+        }
+        for (let i = 0; i < 11; i++) {
+          fineSquares[i].className = 'fine-sq';
+        }
+
+        if (!hasSignal) {
+          inTuneBadge.className = 'px-2 py-0.5 rounded-full text-[10px] font-extrabold tracking-widest uppercase bg-slate-800/80 text-slate-500 border border-white/5';
+          centerArrow.className = 'text-slate-600 font-bold';
+          arrowLeft.className = 'text-2xl font-black text-slate-700';
+          arrowRight.className = 'text-2xl font-black text-slate-700';
+          noteNameEl.className = 'mono text-6xl sm:text-7xl font-extrabold tracking-tighter note-glow-idle';
+          return;
+        }
+
+        const clamped = Math.max(-50, Math.min(50, cents));
+        const inTune = Math.abs(clamped) <= 2.0;
+
+        if (state.displayMode === 'cent') {
+          // BOSS CENT mode: discrete square index from 0..20 (center = 10)
+          const idx = Math.max(0, Math.min(20, Math.round(10 + (clamped / 50) * 10)));
+          if (inTune) {
+            ledSquares[10].classList.add('on-green');
+            // Accu-Pitch inward flash effect
+            state.accuPitchPulse = (state.accuPitchPulse + dt * 4) % 1;
+            if (state.accuPitchPulse < 0.5) {
+              ledSquares[9].classList.add('on-green');
+              ledSquares[11].classList.add('on-green');
+            }
+          } else if (idx < 10) {
+            for (let i = idx; i < 10; i++) {
+              ledSquares[i].classList.add(i <= 3 ? 'on-red' : 'on-amber');
+            }
+          } else {
+            for (let i = 11; i <= idx; i++) {
+              ledSquares[i].classList.add(i >= 17 ? 'on-red' : 'on-amber');
+            }
+          }
+        } else {
+          // STROBE modes (BOSS Stream / 4-Band Multi / Dual Mirrored)
+          const themeClass =
+            state.strobeTheme === 'waza'
+              ? 'on-blue'
+              : state.strobeTheme === 'gold'
+              ? 'on-gold'
+              : clamped < 0
+              ? 'on-red'
+              : 'on-amber';
+
+          if (state.strobeStyle === 'multi') {
+            // 4 stacked harmonic strobe bands (1x, 1.5x, 2x, 3x speeds)
+            const baseSpeed = (clamped / 50) * 14 * state.strobeSpeed;
+            if (!inTune) {
+              state.strobePhase = state.strobePhase + baseSpeed * dt;
+            }
+            const multipliers = [1, 1.5, 2, 3];
+            for (let r = 0; r < 4; r++) {
+              const period = r < 2 ? 4 : 3;
+              const phase = ((state.strobePhase * multipliers[r]) % period + period) % period;
+              const offset = Math.floor(phase);
+              for (let c = 0; c < 21; c++) {
+                if (((c - offset) % period + period) % period === 0) {
+                  strobeRows[r][c].classList.add(inTune ? 'on-green' : themeClass);
+                }
+              }
+            }
+          } else if (state.strobeStyle === 'dual') {
+            // Mirrored dual-stream converging toward or diverging from center
+            if (inTune) {
+              for (let i = 8; i <= 12; i++) {
+                ledSquares[i].classList.add('on-green');
+              }
+            } else {
+              const speed = (clamped / 50) * 12 * state.strobeSpeed;
+              state.strobePhase = ((state.strobePhase + speed * dt) % 5 + 5) % 5;
+              const offset = Math.floor(state.strobePhase);
+              for (let d = 0; d <= 10; d++) {
+                if (((d - offset) % 4 + 4) % 4 === 0) {
+                  if (10 - d >= 0) ledSquares[10 - d].classList.add(clamped < 0 ? themeClass : 'on-amber');
+                  if (10 + d <= 20) ledSquares[10 + d].classList.add(clamped > 0 ? themeClass : 'on-red');
+                }
+              }
+            }
+          } else {
+            // Classic BOSS Stream
+            if (inTune) {
+              ledSquares[10].classList.add('on-green');
+              ledSquares[9].classList.add('on-green');
+              ledSquares[11].classList.add('on-green');
+            } else {
+              const speed = (clamped / 50) * 12 * state.strobeSpeed;
+              state.strobePhase = ((state.strobePhase + speed * dt) % 4 + 4) % 4;
+              const offset = Math.floor(state.strobePhase);
+              for (let i = 0; i < 21; i++) {
+                if (((i - offset) % 4 + 4) % 4 === 0) {
+                  ledSquares[i].classList.add(Math.abs(clamped) < 8 && state.strobeTheme === 'boss' ? 'on-blue' : themeClass);
+                }
+              }
+            }
+          }
+        }
+
+        // Fine ±10¢ meter (11 squares, center = 5)
+        const fineClamped = Math.max(-10, Math.min(10, cents));
+        const fineIdx = Math.max(0, Math.min(10, Math.round(5 + (fineClamped / 10) * 5)));
+        if (Math.abs(cents) <= 1.5) {
+          fineSquares[5].classList.add('on-green');
+        } else {
+          fineSquares[fineIdx].classList.add(Math.abs(cents) <= 4 ? 'on-blue' : 'on-amber');
+        }
+
+        // Arrows & Badges
+        if (inTune) {
+          inTuneBadge.className = 'px-2 py-0.5 rounded-full text-[10px] font-extrabold tracking-widest uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-400/50 shadow shadow-emerald-500/20';
+          centerArrow.className = 'text-emerald-400 font-bold';
+          arrowLeft.className = 'text-2xl font-black text-emerald-400 drop-shadow-[0_0_8px_rgba(0,230,118,0.8)]';
+          arrowRight.className = 'text-2xl font-black text-emerald-400 drop-shadow-[0_0_8px_rgba(0,230,118,0.8)]';
+          noteNameEl.className = 'mono text-6xl sm:text-7xl font-extrabold tracking-tighter note-glow-in-tune';
+        } else {
+          inTuneBadge.className = 'px-2 py-0.5 rounded-full text-[10px] font-extrabold tracking-widest uppercase bg-slate-800/80 text-slate-500 border border-white/5';
+          centerArrow.className = 'text-slate-500 font-bold';
+          arrowLeft.className = clamped < 0 ? 'text-2xl font-black text-rose-400' : 'text-2xl font-black text-slate-700';
+          arrowRight.className = clamped > 0 ? 'text-2xl font-black text-amber-400' : 'text-2xl font-black text-slate-700';
+          noteNameEl.className = 'mono text-6xl sm:text-7xl font-extrabold tracking-tighter note-glow-active';
+        }
+      }
+
+      function loop(now) {
+        const dt = Math.min(0.1, (now - state.lastFrameTime) / 1000);
+        state.lastFrameTime = now;
+
+        if (state.simActive) {
+          // Demo mode uses slider cents against currently selected string (or A4 in chromatic)
+          const strings = TUNINGS[state.tuningKey];
+          const refObj =
+            state.instrumentMode === 'guitar'
+              ? strings[state.lockedStringIdx !== null ? state.lockedStringIdx : 0]
+              : { note: 'A', octave: 4, midi: 69 };
+          const tf = midiToFreq(refObj.midi);
+          const simFreq = tf * Math.pow(2, state.simCents / 1200);
+
+          state.hasSignal = true;
+          state.signalLevel = 0.72;
+          state.smoothedCents = state.simCents;
+          state.smoothedFreq = simFreq;
+          state.currentNote = refObj.note;
+          state.currentOctave = refObj.octave;
+          state.targetFreq = tf;
+        } else if (state.micActive && analyser && audioBuffer) {
+          analyser.getFloatTimeDomainData(audioBuffer);
+          const { freq, rms } = detectPitch(audioBuffer, audioCtx.sampleRate);
+          state.signalLevel = Math.min(1, rms * 8);
+
+          if (freq > 0) {
+            const match = resolveTarget(freq);
+            state.hasSignal = true;
+            // Smooth exponentially to eliminate jitter
+            state.smoothedCents = state.smoothedCents * 0.7 + match.cents * 0.3;
+            state.smoothedFreq = state.smoothedFreq ? state.smoothedFreq * 0.7 + freq * 0.3 : freq;
+            state.currentNote = match.note;
+            state.currentOctave = match.octave;
+            state.targetFreq = match.targetFreq;
+          } else {
+            state.hasSignal = false;
+          }
+        } else {
+          state.hasSignal = false;
+          state.signalLevel = 0;
+        }
+
+        // Update UI readouts
+        signalBar.style.width = `${Math.round(state.signalLevel * 100)}%`;
+        if (state.hasSignal) {
+          noteNameEl.textContent = state.currentNote;
+          noteOctaveEl.textContent = state.currentOctave;
+          freqReadout.textContent = `${state.smoothedFreq.toFixed(2)} Hz`;
+          targetReadout.textContent = `Alvo: ${state.targetFreq.toFixed(2)} Hz`;
+          const sign = state.smoothedCents > 0.05 ? '+' : '';
+          centsReadout.textContent = `${sign}${state.smoothedCents.toFixed(1)} ¢`;
+        } else {
+          noteNameEl.textContent = '--';
+          noteOctaveEl.textContent = '';
+          freqReadout.textContent = '0.00 Hz';
+          targetReadout.textContent = 'Alvo: --';
+          centsReadout.textContent = '--.- ¢';
+        }
+
+        updateLEDs(state.smoothedCents, state.hasSignal, dt);
+        rafId = requestAnimationFrame(loop);
+      }
+
+      async function toggleMic() {
+        errorBanner.classList.add('hidden');
+        if (state.micActive) {
+          if (micStream) {
+            micStream.getTracks().forEach((t) => t.stop());
+            micStream = null;
+          }
+          state.micActive = false;
+          btnMicLabel.textContent = 'Ligar Microfone';
+          btnMic.classList.remove('bg-rose-500', 'hover:bg-rose-400', 'shadow-rose-500/20');
+          btnMic.classList.add('bg-sky-500', 'hover:bg-sky-400', 'shadow-sky-500/20');
+          statusDot.className = state.simActive ? 'w-2.5 h-2.5 rounded-full bg-amber-400' : 'w-2.5 h-2.5 rounded-full bg-slate-600';
+          statusText.textContent = state.simActive ? 'Modo Demo' : 'Standby';
+          return;
+        }
+
+        try {
+          ensureAudioContext();
+          if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            throw new Error('Navegador sem suporte a microfone.');
+          }
+          micStream = await navigator.mediaDevices.getUserMedia({
+            audio: {
+              echoCancellation: false,
+              autoGainControl: false,
+              noiseSuppression: false
+            }
+          });
+          const source = audioCtx.createMediaStreamSource(micStream);
+          analyser = audioCtx.createAnalyser();
+          analyser.fftSize = 4096;
+          audioBuffer = new Float32Array(analyser.fftSize);
+          source.connect(analyser);
+
+          // Turn off demo if mic starts
+          if (state.simActive) {
+            setSimActive(false);
+          }
+
+          state.micActive = true;
+          btnMicLabel.textContent = 'Desligar Microfone';
+          btnMic.classList.remove('bg-sky-500', 'hover:bg-sky-400', 'shadow-sky-500/20');
+          btnMic.classList.add('bg-rose-500', 'hover:bg-rose-400', 'shadow-rose-500/20');
+          statusDot.className = 'w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse';
+          statusText.textContent = 'Ouvindo';
+        } catch (err) {
+          errorBanner.textContent =
+            'Não foi possível acessar o microfone. Verifique a permissão do navegador ou use o Simulador Visual abaixo.';
+          errorBanner.classList.remove('hidden');
+        }
+      }
+
+      function syncStrobeVisualContainers() {
+        const isMulti = state.displayMode === 'strobe' && state.strobeStyle === 'multi';
+        ledGrid.classList.toggle('hidden', isMulti);
+        strobeMatrix.classList.toggle('hidden', !isMulti);
+        strobeOptionsPanel.classList.toggle('hidden', state.displayMode !== 'strobe');
+      }
+
+      function setStrobeStyle(style) {
+        state.strobeStyle = style;
+        const activeCls = 'px-2 py-1 rounded-md text-[11px] font-bold bg-sky-500 text-slate-950 transition-colors';
+        const idleCls = 'px-2 py-1 rounded-md text-[11px] font-bold bg-slate-800 text-slate-300 hover:text-white transition-colors';
+        btnStrobeStream.className = style === 'stream' ? activeCls : idleCls;
+        btnStrobeMulti.className = style === 'multi' ? activeCls : idleCls;
+        btnStrobeDual.className = style === 'dual' ? activeCls : idleCls;
+        syncStrobeVisualContainers();
+      }
+
+      function setStrobeSpeed(speed) {
+        state.strobeSpeed = speed;
+        const activeCls = 'px-2 py-0.5 rounded text-[10px] font-bold bg-sky-500/25 text-sky-300 border border-sky-400/40';
+        const idleCls = 'px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-300';
+        btnSpeed1x.className = speed === 1 ? activeCls : idleCls;
+        btnSpeed2x.className = speed === 2 ? activeCls : idleCls;
+        btnSpeed4x.className = speed === 4 ? activeCls : idleCls;
+      }
+
+      function setStrobeTheme(theme) {
+        state.strobeTheme = theme;
+        const idleCls = 'px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-300';
+        btnThemeBoss.className = theme === 'boss' ? 'px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/25 text-rose-300 border border-rose-400/40' : idleCls;
+        btnThemeWaza.className = theme === 'waza' ? 'px-2 py-0.5 rounded text-[10px] font-bold bg-sky-500/25 text-sky-300 border border-sky-400/40' : idleCls;
+        btnThemeGold.className = theme === 'gold' ? 'px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/25 text-amber-300 border border-amber-400/40' : idleCls;
+      }
+
+      function setDisplayMode(mode) {
+        state.displayMode = mode;
+        displayModeTag.textContent = mode === 'cent' ? 'MODO: CENT' : 'MODO: STROBE';
+        if (mode === 'cent') {
+          btnModeCent.className = 'flex-1 py-2 px-2 rounded-lg text-xs font-bold tracking-wide transition-all bg-sky-500 text-slate-950 shadow';
+          btnModeStrobe.className = 'flex-1 py-2 px-2 rounded-lg text-xs font-bold tracking-wide transition-all text-slate-400 hover:text-slate-200';
+        } else {
+          btnModeStrobe.className = 'flex-1 py-2 px-2 rounded-lg text-xs font-bold tracking-wide transition-all bg-sky-500 text-slate-950 shadow';
+          btnModeCent.className = 'flex-1 py-2 px-2 rounded-lg text-xs font-bold tracking-wide transition-all text-slate-400 hover:text-slate-200';
+        }
+        syncStrobeVisualContainers();
+      }
+
+      function setInstrumentMode(inst) {
+        state.instrumentMode = inst;
+        if (inst === 'guitar') {
+          btnInstGuitar.className = 'flex-1 py-2 px-2 rounded-lg text-xs font-bold tracking-wide transition-all bg-emerald-500 text-slate-950 shadow';
+          btnInstChromatic.className = 'flex-1 py-2 px-2 rounded-lg text-xs font-bold tracking-wide transition-all text-slate-400 hover:text-slate-200';
+          guitarSection.classList.remove('hidden');
+        } else {
+          btnInstChromatic.className = 'flex-1 py-2 px-2 rounded-lg text-xs font-bold tracking-wide transition-all bg-emerald-500 text-slate-950 shadow';
+          btnInstGuitar.className = 'flex-1 py-2 px-2 rounded-lg text-xs font-bold tracking-wide transition-all text-slate-400 hover:text-slate-200';
+          guitarSection.classList.add('hidden');
+        }
+      }
+
+      function setSimActive(active) {
+        state.simActive = active;
+        if (active) {
+          simControls.classList.remove('hidden');
+          simControls.classList.add('flex');
+          btnSimToggle.textContent = 'Desativar Demo';
+          btnSimToggle.className = 'px-2.5 py-1 rounded-md text-[11px] font-bold bg-amber-500 text-slate-950';
+          if (!state.micActive) {
+            statusDot.className = 'w-2.5 h-2.5 rounded-full bg-amber-400';
+            statusText.textContent = 'Modo Demo';
+          }
+        } else {
+          simControls.classList.add('hidden');
+          simControls.classList.remove('flex');
+          btnSimToggle.textContent = 'Ativar Demo';
+          btnSimToggle.className = 'px-2.5 py-1 rounded-md text-[11px] font-bold bg-slate-800 text-slate-300 hover:bg-slate-700';
+          if (!state.micActive) {
+            statusDot.className = 'w-2.5 h-2.5 rounded-full bg-slate-600';
+            statusText.textContent = 'Standby';
+          }
+        }
+      }
+
+      // Event listeners
+      btnModeCent.addEventListener('click', () => setDisplayMode('cent'));
+      btnModeStrobe.addEventListener('click', () => setDisplayMode('strobe'));
+      btnStrobeStream.addEventListener('click', () => setStrobeStyle('stream'));
+      btnStrobeMulti.addEventListener('click', () => setStrobeStyle('multi'));
+      btnStrobeDual.addEventListener('click', () => setStrobeStyle('dual'));
+      btnSpeed1x.addEventListener('click', () => setStrobeSpeed(1));
+      btnSpeed2x.addEventListener('click', () => setStrobeSpeed(2));
+      btnSpeed4x.addEventListener('click', () => setStrobeSpeed(4));
+      btnThemeBoss.addEventListener('click', () => setStrobeTheme('boss'));
+      btnThemeWaza.addEventListener('click', () => setStrobeTheme('waza'));
+      btnThemeGold.addEventListener('click', () => setStrobeTheme('gold'));
+      btnInstGuitar.addEventListener('click', () => setInstrumentMode('guitar'));
+      btnInstChromatic.addEventListener('click', () => setInstrumentMode('chromatic'));
+      tuningSelect.addEventListener('change', (e) => {
+        state.tuningKey = e.target.value;
+        state.lockedStringIdx = null;
+        renderStringButtons();
+      });
+      btnMic.addEventListener('click', toggleMic);
+
+      btnA4Down.addEventListener('click', () => {
+        state.a4 = Math.max(430, state.a4 - 1);
+        a4Value.textContent = `${state.a4} Hz`;
+        displayRefTag.textContent = `A4 = ${state.a4}Hz`;
+        renderStringButtons();
+      });
+      btnA4Up.addEventListener('click', () => {
+        state.a4 = Math.min(450, state.a4 + 1);
+        a4Value.textContent = `${state.a4} Hz`;
+        displayRefTag.textContent = `A4 = ${state.a4}Hz`;
+        renderStringButtons();
+      });
+
+      btnSimToggle.addEventListener('click', () => setSimActive(!state.simActive));
+      simSlider.addEventListener('input', (e) => {
+        state.simCents = parseFloat(e.target.value);
+        const sign = state.simCents > 0 ? '+' : '';
+        simCentsLabel.textContent = `${sign}${state.simCents.toFixed(1)} ¢`;
+      });
+      btnSimZero.addEventListener('click', () => {
+        state.simCents = 0;
+        simSlider.value = '0';
+        simCentsLabel.textContent = '0.0 ¢';
+      });
+
+      // Initialize
+      renderStringButtons();
+      setDisplayMode('strobe');
+      setStrobeStyle('multi');
+      setStrobeSpeed(2);
+      setStrobeTheme('waza');
+      setSimActive(true); // Start with Demo active so user immediately sees the BOSS/Strobe LED squares in action
+      simCentsLabel.textContent = `${state.simCents.toFixed(1)} ¢`;
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(loop);
+    })();
+  </script>
+</body>
+</html>
