@@ -434,6 +434,23 @@
           </div>
         </div>
 
+        <!-- Mic Sensitivity & Note Hold -->
+        <div class="pt-2 border-t border-white/5 flex flex-col gap-2">
+          <div class="flex items-center justify-between text-xs">
+            <span class="font-semibold text-slate-300">Sensibilidade do Mic</span>
+            <span id="micSensLabel" class="mono text-[11px] font-bold text-emerald-300">75%</span>
+          </div>
+          <input id="micSensSlider" type="range" min="10" max="100" step="5" value="75" class="w-full" />
+          <div class="flex items-center justify-between text-[11px] pt-1">
+            <span class="font-semibold text-slate-400">Duração da Nota na Tela</span>
+            <div class="flex gap-1">
+              <button id="btnHold1" type="button" class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-300">1s</button>
+              <button id="btnHold2" type="button" class="px-2 py-0.5 rounded text-[10px] font-bold bg-sky-500/25 text-sky-300 border border-sky-400/40">2s</button>
+              <button id="btnHold4" type="button" class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-300">4s</button>
+            </div>
+          </div>
+        </div>
+
         <!-- Interactive Test / Demo Simulator -->
         <div class="pt-2 border-t border-white/5 flex flex-col gap-2">
           <div class="flex items-center justify-between">
@@ -753,6 +770,11 @@
         pitchHistory: [], // { t, midiFloat, cents, noteLabel }
         noteTrail: [], // last 6 distinct notes sung
         lastTrailNote: '',
+        micSensitivity: 75, // 10..100 (higher = picks up quieter sounds)
+        holdDurationMs: 2000, // 1000 | 2000 | 4000
+        lastValidTime: 0,
+        candidateNoteKey: '',
+        candidateFrames: 0,
         tuningKey: 'standard',
         lockedStringIdx: null, // null = auto detect
         a4: 440,
@@ -821,6 +843,11 @@
       const btnA4Down = document.getElementById('btnA4Down');
       const btnA4Up = document.getElementById('btnA4Up');
       const a4Value = document.getElementById('a4Value');
+      const micSensSlider = document.getElementById('micSensSlider');
+      const micSensLabel = document.getElementById('micSensLabel');
+      const btnHold1 = document.getElementById('btnHold1');
+      const btnHold2 = document.getElementById('btnHold2');
+      const btnHold4 = document.getElementById('btnHold4');
       const btnSimToggle = document.getElementById('btnSimToggle');
       const simControls = document.getElementById('simControls');
       const simSlider = document.getElementById('simSlider');
@@ -1005,7 +1032,9 @@
 
         const inst = INSTRUMENTS[state.instrumentMode];
         const isVocal = Boolean(inst && inst.isVocal);
-        const rmsThreshold = isVocal && state.hummingHighSens ? 0.0038 : 0.012;
+        // Map sensitivity 10..100 -> rmsThreshold 0.032..0.0015 (and even lower if Humming: Alto)
+        const baseThresh = 0.032 - ((state.micSensitivity - 10) / 90) * 0.0305;
+        const rmsThreshold = isVocal && state.hummingHighSens ? baseThresh * 0.6 : baseThresh;
         if (rms < rmsThreshold) {
           return { freq: -1, rms };
         }
@@ -1377,19 +1406,35 @@
         } else if (state.micActive && analyser && audioBuffer) {
           analyser.getFloatTimeDomainData(audioBuffer);
           const { freq, rms } = detectPitch(audioBuffer, audioCtx.sampleRate);
-          state.signalLevel = Math.min(1, rms * 8);
+          state.signalLevel = Math.min(1, rms * 10);
 
           if (freq > 0) {
             const match = resolveTarget(freq);
-            state.hasSignal = true;
-            // Smooth exponentially to eliminate jitter
-            state.smoothedCents = state.smoothedCents * 0.7 + match.cents * 0.3;
-            state.smoothedFreq = state.smoothedFreq ? state.smoothedFreq * 0.7 + freq * 0.3 : freq;
-            state.currentNote = match.note;
-            state.currentOctave = match.octave;
-            state.targetFreq = match.targetFreq;
+            const noteKey = `${match.note}${match.octave}`;
+            if (noteKey === state.candidateNoteKey) {
+              state.candidateFrames++;
+            } else {
+              state.candidateNoteKey = noteKey;
+              state.candidateFrames = 1;
+            }
+
+            // Only switch displayed note after 3 consistent frames (or immediately if no note is currently held)
+            if (state.candidateFrames >= 3 || !state.hasSignal) {
+              state.hasSignal = true;
+              state.lastValidTime = now;
+              const isSameNote = `${state.currentNote}${state.currentOctave}` === noteKey;
+              state.smoothedCents = isSameNote ? state.smoothedCents * 0.72 + match.cents * 0.28 : match.cents;
+              state.smoothedFreq = isSameNote && state.smoothedFreq ? state.smoothedFreq * 0.72 + freq * 0.28 : freq;
+              state.currentNote = match.note;
+              state.currentOctave = match.octave;
+              state.targetFreq = match.targetFreq;
+            }
           } else {
-            state.hasSignal = false;
+            state.candidateFrames = 0;
+            // Keep last detected note visible during holdDurationMs
+            if (state.hasSignal && now - state.lastValidTime > state.holdDurationMs) {
+              state.hasSignal = false;
+            }
           }
         } else {
           state.hasSignal = false;
@@ -1635,6 +1680,23 @@
         displayRefTag.textContent = `A4 = ${state.a4}Hz`;
         renderStringButtons();
       });
+
+      micSensSlider.addEventListener('input', (e) => {
+        state.micSensitivity = parseInt(e.target.value, 10);
+        micSensLabel.textContent = `${state.micSensitivity}%`;
+      });
+
+      function setHoldDuration(ms) {
+        state.holdDurationMs = ms;
+        const activeCls = 'px-2 py-0.5 rounded text-[10px] font-bold bg-sky-500/25 text-sky-300 border border-sky-400/40';
+        const idleCls = 'px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-300';
+        btnHold1.className = ms === 1000 ? activeCls : idleCls;
+        btnHold2.className = ms === 2000 ? activeCls : idleCls;
+        btnHold4.className = ms === 4000 ? activeCls : idleCls;
+      }
+      btnHold1.addEventListener('click', () => setHoldDuration(1000));
+      btnHold2.addEventListener('click', () => setHoldDuration(2000));
+      btnHold4.addEventListener('click', () => setHoldDuration(4000));
 
       btnSimToggle.addEventListener('click', () => setSimActive(!state.simActive));
       simSlider.addEventListener('input', (e) => {
